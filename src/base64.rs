@@ -86,16 +86,36 @@ fn hex2base64(bytearray: Vec<u8>) -> String {
 }
 
 fn base64_2hex(string: &str) -> Vec<u8> {
-    //TODO: This is really wrong but needed :(
     use std::iter::FromIterator;
+    //TODO: This is really wrong but needed :(
     let mut v = Vec::new();
-    let chars = string.chars();
-    let a = BASE64_TABLE.iter().zip(0..64);
 
-    let map: HashMap<&char, i32> = HashMap::from_iter(a);
+    let char_to_index_map: HashMap<&char, i32> = HashMap::from_iter(BASE64_TABLE.iter().zip(0..64));
 
-    for c in chars {
-        v.push(map[&c] as u8);
+    let mut temp_vec = Vec::new();
+
+    for c in string.chars() {
+        temp_vec.push(a[&c] as u8);
+    }
+
+    let mut r: u8 = 0;
+    let mut has = 0;
+
+    let mut bits = BitArray::new(temp_vec.as_slice(), 2);
+
+    for (i, two_bits) in bits.enumerate() {
+        println!("{:#010b}", two_bits);
+        if i % 4 != 0 {
+            has += 1;
+            let shift = if has % 4 == 0 { 0 } else { 2 };
+            r = (r | two_bits) << shift;
+
+            if has == 4 {
+                v.push(r);
+                has = 0;
+                r = 0;
+            }
+        }
     }
 
     v
@@ -118,9 +138,9 @@ mod tests {
 
     #[test]
     fn base64tohex_test() {
-        let base64 = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
+        let base64_input = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
         let hexstring_output = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-        let test_value = base64_2hex(base64);
+        let test_value = base64_2hex(base64_input);
         let known_value = string2hex(hexstring_output);
 
         assert_eq!(test_value, known_value);
