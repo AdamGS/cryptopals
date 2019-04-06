@@ -9,8 +9,8 @@ impl<'a> BitArray<'a> {
     pub fn new(bytes: &'a [u8], step: usize) -> BitArray {
         assert!(step <= 8);
         BitArray {
-            bytes: bytes,
-            step: step,
+            bytes,
+            step,
             index: 0,
             bidx: 0,
         }

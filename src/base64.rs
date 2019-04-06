@@ -35,15 +35,10 @@ fn char_to_hex(c: char) -> u8 {
 fn string2hex(string: &str) -> Vec<u8> {
     let mut byte_vec = Vec::new();
     let mut chars = string.chars();
-    loop {
-        match (chars.next(), chars.next()) {
-            (Some(l), Some(r)) => {
-                let left = char_to_hex(l) << 4;
-                let right = char_to_hex(r);
-                byte_vec.push(left | right);
-            }
-            _ => break,
-        }
+    while let (Some(l), Some(r)) = (chars.next(), chars.next()) {
+        let left = char_to_hex(l) << 4;
+        let right = char_to_hex(r);
+        byte_vec.push(left | right);
     }
 
     byte_vec
@@ -63,7 +58,7 @@ fn hex2string(hex_bytes: Vec<u8>) -> String {
 }
 
 fn hex2base64(bytearray: Vec<u8>) -> String {
-    let mut s = String::new();
+    let mut base64_string = String::new();
     let mut bits = BitArray::new(bytearray.as_slice(), 6);
 
     loop {
@@ -71,40 +66,37 @@ fn hex2base64(bytearray: Vec<u8>) -> String {
         match block {
             (None, _, _, _) => break,
             (Some(a), Some(b), c, d) => {
-                s.push(BASE64_TABLE[a as usize]);
-                s.push(BASE64_TABLE[b as usize]);
+                base64_string.push(BASE64_TABLE[a as usize]);
+                base64_string.push(BASE64_TABLE[b as usize]);
 
                 match c {
-                    Some(c) => s.push(BASE64_TABLE[c as usize]),
-                    _ => s.push('='),
+                    Some(c) => base64_string.push(BASE64_TABLE[c as usize]),
+                    _ => base64_string.push('='),
                 }
 
                 match d {
-                    Some(d) => s.push(BASE64_TABLE[d as usize]),
-                    _ => s.push('='),
+                    Some(d) => base64_string.push(BASE64_TABLE[d as usize]),
+                    _ => base64_string.push('='),
                 }
             }
             _ => unreachable!(),
         }
     }
-    s
+    base64_string
 }
 
 fn base64_2hex(string: &str) -> Vec<u8> {
     //TODO: This is really wrong but needed :(
     use std::iter::FromIterator;
     let mut v = Vec::new();
+    let chars = string.chars();
+    let a = BASE64_TABLE.iter().zip(0..64);
 
-    let mut chars = string.chars();
-
-    let a= BASE64_TABLE.iter().zip((0..64));
-
-    let map:HashMap<&char, i32> = HashMap::from_iter(a);
+    let map: HashMap<&char, i32> = HashMap::from_iter(a);
 
     for c in chars {
         v.push(map[&c] as u8);
     }
-
 
     v
 }
