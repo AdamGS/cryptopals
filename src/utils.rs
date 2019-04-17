@@ -1,11 +1,6 @@
 use crate::bitarray::BitArray;
 use std::collections::HashMap;
 
-const CHAR_FREQUENCY_TABLE: [f64; 26] = [
-    0.1202, 0.910, 0.812, 0.768, 0.731, 0.695, 0.628, 0.602, 0.592, 0.432, 0.398, 0.288, 0.271,
-    0.261, 0.23, 0.211, 0.209, 0.203, 0.182, 0.149, 0.111, 0.069, 0.017, 0.011, 0.01, 0.007,
-];
-
 pub fn euclidean_distance(vec1: Vec<f64>, vec2: Vec<f64>) -> f64 {
     assert_eq!(vec1.len(), vec2.len());
     let mut sum = 0f64;
@@ -34,8 +29,8 @@ pub fn rate_string(input: &str) -> i64 {
 
     for clear_c in input.as_bytes() {
         let new_char = *clear_c as char;
-        if let Some(_) = freq_map.get(&new_char) {
-            score += (freq_map.get(&new_char).unwrap() * 1000_f64) as i64;
+        if let Some(s) = freq_map.get(&new_char) {
+            score += (*s * 1000_f64) as i64;
         }
     }
 
@@ -44,7 +39,7 @@ pub fn rate_string(input: &str) -> i64 {
 
 pub fn hamming_distance(first: &[u8], second: &[u8]) -> usize {
     if first.len() > second.len() {
-        return (first.len() - second.len());
+        return first.len() - second.len();
     } else if first.len() < second.len() {
         return second.len() - first.len();
     }
@@ -94,7 +89,7 @@ pub fn all_chars() -> Vec<char> {
 }
 
 pub fn frequency_map() -> HashMap<char, f64> {
-    let map = [
+    [
         (' ', 17.16),
         ('0', 0.551),
         ('1', 0.460),
@@ -161,7 +156,6 @@ pub fn frequency_map() -> HashMap<char, f64> {
     ]
     .iter()
     .cloned()
-    .collect();
+    .collect()
 
-    map
 }

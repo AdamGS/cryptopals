@@ -19,7 +19,6 @@ pub mod breakers {
     use super::single_byte_xor_cipher;
     use crate::utils::all_chars;
     use crate::utils::rate_string;
-    use std::collections::HashMap;
     use std::iter::FromIterator;
 
     pub fn break_single_xor_cipher(ciphertext: &[u8]) -> u8 {

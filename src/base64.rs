@@ -84,7 +84,7 @@ fn base64tohex(string: &str) -> Vec<u8> {
 
     let mut r: u8 = 0;
     let mut has = 0;
-    let mut bits = BitArray::new(temp_vec.as_slice(), 2);
+    let bits = BitArray::new(temp_vec.as_slice(), 2);
 
     for (i, two_bits) in bits.enumerate() {
         if i % 4 != 0 {
