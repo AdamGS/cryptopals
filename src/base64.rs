@@ -1,5 +1,6 @@
 use crate::bitarray::BitArray;
 use crate::utils::fixed_xor;
+use crate::utils::{char_to_hex, hex_to_char};
 use std::collections::HashMap;
 
 const BASE64_TABLE: [char; 64] = [
@@ -15,22 +16,6 @@ const ALL_CHARS: [char; 62] = [
     'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4',
     '5', '6', '7', '8', '9',
 ];
-
-fn hex_to_char(i: u8) -> char {
-    match i {
-        0x0...0x9 => (i + b'0') as char,
-        0xa...0xf => (i - 0xa + b'a') as char,
-        _ => panic!("hex_to_char only converts short values between 0x0 and 0xf"),
-    }
-}
-
-fn char_to_hex(c: char) -> u8 {
-    match c {
-        '0'...'9' => (c as u8 - b'0'),
-        'a'...'f' => 10 + (c as u8 - b'a'),
-        _ => panic!("char_to_hex only converts char values between '0' and 'f'"),
-    }
-}
 
 fn string2hex(string: &str) -> Vec<u8> {
     let mut byte_vec = Vec::new();
@@ -85,30 +70,26 @@ fn hex2base64(bytearray: Vec<u8>) -> String {
     base64_string
 }
 
-fn base64_2hex(string: &str) -> Vec<u8> {
+fn base64tohex(string: &str) -> Vec<u8> {
     use std::iter::FromIterator;
-    //TODO: This is really wrong but needed :(
     let mut v = Vec::new();
-
     let char_to_index_map: HashMap<&char, i32> = HashMap::from_iter(BASE64_TABLE.iter().zip(0..64));
-
     let mut temp_vec = Vec::new();
 
     for c in string.chars() {
-        temp_vec.push(a[&c] as u8);
+        if c != '=' {
+            temp_vec.push(char_to_index_map[&c] as u8);
+        }
     }
 
     let mut r: u8 = 0;
     let mut has = 0;
-
     let mut bits = BitArray::new(temp_vec.as_slice(), 2);
 
     for (i, two_bits) in bits.enumerate() {
-        println!("{:#010b}", two_bits);
         if i % 4 != 0 {
             has += 1;
-            let shift = if has % 4 == 0 { 0 } else { 2 };
-            r = (r | two_bits) << shift;
+            r = (r | two_bits) << if has % 4 == 0 { 0 } else { 2 };;
 
             if has == 4 {
                 v.push(r);
@@ -124,8 +105,9 @@ fn base64_2hex(string: &str) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::single_byte_xor_cipher;
-    use crate::utils::rate_string;
+    use crate::utils::{all_chars, hamming_distance, rate_string};
     use std::io::Read;
 
     #[test]
@@ -140,7 +122,7 @@ mod tests {
     fn base64tohex_test() {
         let base64_input = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
         let hexstring_output = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
-        let test_value = base64_2hex(base64_input);
+        let test_value = base64tohex(base64_input);
         let known_value = string2hex(hexstring_output);
 
         assert_eq!(test_value, known_value);
@@ -162,29 +144,8 @@ mod tests {
         let ciphertext =
             string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 
-        let hex_keys: Vec<u8> = ALL_CHARS.iter().take(26).map(|c| *c as u8).collect();
-
-        let mut score_map = HashMap::new();
-
-        for key in hex_keys {
-            let cleartext = single_byte_xor_cipher(&ciphertext, key);
-            let cleartext_string = String::from_utf8(cleartext).unwrap();
-
-            score_map.insert(
-                cleartext_string.clone(),
-                rate_string(cleartext_string.clone().as_str()),
-            );
-        }
-
-        let mut base = 0;
-        let mut fin_string = String::new();
-
-        for (a, b) in score_map {
-            if b > base {
-                base = b;
-                fin_string = a;
-            }
-        }
+        let key = break_single_xor_cipher(ciphertext.as_slice());
+        let fin_string = String::from_utf8(single_byte_xor_cipher(&ciphertext, key)).unwrap();
 
         assert_eq!("Cooking MC's like a pound of bacon", fin_string);
     }
@@ -195,7 +156,7 @@ mod tests {
         use std::io::Read;
 
         let mut score_map = HashMap::new();
-        let hex_keys: Vec<u8> = ALL_CHARS.iter().map(|k| *k as u8).collect();
+        let hex_keys: Vec<u8> = all_chars().iter().map(|b| *b as u8).collect();
 
         let mut file = File::open("/home/adam/programming/cryptopals/statics/set1ch4.txt").unwrap();
         let mut s = String::new();
@@ -203,7 +164,7 @@ mod tests {
         let file_lines = s.lines();
 
         for line in file_lines {
-            for key in hex_keys.clone() {
+            for key in hex_keys.to_owned() {
                 let ciphertext = string2hex(line);
                 let cleartext = single_byte_xor_cipher(&string2hex(line), key);
                 let cleartext_string = String::from_utf8(cleartext);
@@ -221,8 +182,7 @@ mod tests {
         let mut fin_string = String::new();
 
         for (a, b) in score_map {
-            if b > base {
-                println!("{}", a);
+            if b >= base {
                 base = b;
                 fin_string = a;
             }
@@ -253,16 +213,67 @@ mod tests {
 
     #[test]
     fn challenge6() {
+        use crate::ciphers::breakers::break_single_xor_cipher;
+        use crate::ciphers::repeating_key_xor_cipher;
         use std::fs::File;
 
         let mut file: File =
             File::open("/home/adam/programming/cryptopals/statics/set1ch6.txt").unwrap();
-        let mut ciphertext = String::new();
-        file.read_to_string(&mut ciphertext);
+        let mut file_string = String::new();
+        file.read_to_string(&mut file_string);
 
-        for keysize in 2..41 {}
+        let ciphertext = base64tohex(file_string.replace("\n", "").as_str());
+
+        let mut vec = Vec::new();
+
+        use std::f64::MAX;
+        let distance = MAX;
+
+        for keysize in 2..40 {
+            let mut chunks = ciphertext.chunks(keysize);
+            let mut count = 0;
+            let mut dist = 0;
+            loop {
+                let (f, s) = (chunks.next(), chunks.next());
+
+                match (f, s) {
+                    (Some(f), Some(s)) => {
+                        dist += hamming_distance(f, s);
+                        count += 1;
+                    }
+                    _ => break,
+                }
+            }
+
+            let normalized_distance = (dist / count) / keysize;
+
+            vec.push((normalized_distance, keysize));
+        }
+
+        vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let final_keysize = vec.iter().map(|(k, v)| *v).next().unwrap();
+
+        let mut strings = vec![Vec::new(); final_keysize];
+        let mut key = vec![0u8; final_keysize];
+
+        for (i, c) in ciphertext.iter().enumerate() {
+            strings[i % final_keysize].push(*c);
+        }
+
+        for (i, s) in strings.iter().enumerate() {
+            key[i] = break_single_xor_cipher(s.as_slice());
+        }
+
+        let f = repeating_key_xor_cipher(ciphertext.as_slice(), key.as_slice());
+
+        //let s: Vec<char> = f.iter().map(|b| *b as char).collect();
+        let s = String::from_utf8(f).unwrap();
+        let s_key = String::from_utf8(key).unwrap();
+
+        // println!("{}", String::from_utf8(key).unwrap());
+        println!("{}", s_key);
     }
-
     #[test]
     fn char_to_hex_test() {
         assert_eq!(char_to_hex('f'), 15);
@@ -272,7 +283,6 @@ mod tests {
     fn hex_to_char_test() {
         assert_eq!(hex_to_char(15), 'f');
     }
-
     #[test]
     fn hex2string_test() {
         assert_eq!(hex2string(string2hex("1fa2")), "1fa2");
@@ -282,8 +292,7 @@ mod tests {
     fn hamming_distance_test() {
         use crate::utils::hamming_distance;
 
-        let t = hamming_distance("this is a test", "wokka wokka!!!");
-        assert_eq!(t, 37);
+        let distance = hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes());
+        assert_eq!(distance, 37);
     }
-
 }
