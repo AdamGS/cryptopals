@@ -28,19 +28,14 @@ pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
 }
 
 pub fn rate_string(input: &str) -> i64 {
-    let chars_by_freq = "ETAOINSRHDLUCMFYWGPBVKXQJZ".chars();
-    let freq_zip = chars_by_freq.zip(CHAR_FREQUENCY_TABLE.iter().map(|f| (f * 1000f64) as i64));
-    let mut frequency_map = HashMap::new();
-
-    for (c, f) in freq_zip {
-        frequency_map.insert(c, f);
-    }
+    let freq_map = frequency_map();
 
     let mut score = 0;
 
-    for clear_c in input.chars() {
-        if clear_c.is_alphabetic(){
-            score += frequency_map.get(&clear_c.to_ascii_uppercase()).unwrap();
+    for clear_c in input.as_bytes() {
+        let new_char = *clear_c as char;
+        if let Some(_) = freq_map.get(&new_char) {
+            score += (freq_map.get(&new_char).unwrap() * 1000_f64) as i64;
         }
     }
 
@@ -96,4 +91,77 @@ pub fn all_chars() -> Vec<char> {
     let iter = (0_u8..128_u8).map(|x| (x as char));
 
     Vec::from_iter(iter)
+}
+
+pub fn frequency_map() -> HashMap<char, f64> {
+    let map = [
+        (' ', 17.16),
+        ('0', 0.551),
+        ('1', 0.460),
+        ('2', 0.332),
+        ('3', 0.184),
+        ('4', 0.135),
+        ('5', 0.166),
+        ('6', 0.115),
+        ('7', 0.103),
+        ('8', 0.105),
+        ('9', 0.102),
+        ('A', 0.313),
+        ('B', 0.216),
+        ('C', 0.390),
+        ('D', 0.315),
+        ('E', 0.267),
+        ('F', 0.141),
+        ('G', 0.187),
+        ('H', 0.232),
+        ('I', 0.321),
+        ('J', 0.172),
+        ('K', 0.068),
+        ('L', 0.188),
+        ('M', 0.353),
+        ('N', 0.208),
+        ('O', 0.184),
+        ('P', 0.261),
+        ('Q', 0.031),
+        ('R', 0.252),
+        ('S', 0.400),
+        ('T', 0.332),
+        ('U', 0.081),
+        ('V', 0.089),
+        ('W', 0.252),
+        ('X', 0.034),
+        ('Y', 0.03),
+        ('Z', 0.007),
+        ('a', 5.118),
+        ('b', 1.019),
+        ('c', 2.112),
+        ('d', 2.507),
+        ('e', 8.577),
+        ('f', 1.372),
+        ('g', 1.559),
+        ('h', 2.744),
+        ('i', 4.901),
+        ('j', 0.086),
+        ('k', 0.675),
+        ('l', 3.175),
+        ('m', 1.643),
+        ('n', 4.970),
+        ('o', 5.770),
+        ('p', 1.548),
+        ('q', 0.074),
+        ('r', 4.258),
+        ('s', 4.368),
+        ('t', 6.370),
+        ('u', 2.099),
+        ('v', 0.846),
+        ('w', 1.303),
+        ('x', 0.195),
+        ('y', 1.133),
+        ('z', 0.059)
+    ]
+    .iter()
+    .cloned()
+    .collect();
+
+    map
 }
