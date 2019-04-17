@@ -17,12 +17,12 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
 
 pub mod breakers {
     use super::single_byte_xor_cipher;
-    use crate::utils::all_chars;
+    use crate::utils::all_ascii_chars;
     use crate::utils::rate_string;
     use std::iter::FromIterator;
 
     pub fn break_single_xor_cipher(ciphertext: &[u8]) -> u8 {
-        let hex_keys: Vec<u8> = all_chars().iter().map(|c| *c as u8).collect();
+        let hex_keys: Vec<u8> = all_ascii_chars().iter().map(|c| *c as u8).collect();
 
         let mut base = 0;
         let mut suspected_key = 0_u8;

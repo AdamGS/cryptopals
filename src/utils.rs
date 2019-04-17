@@ -81,7 +81,7 @@ pub fn char_to_hex(c: char) -> u8 {
     }
 }
 
-pub fn all_chars() -> Vec<char> {
+pub fn all_ascii_chars() -> Vec<char> {
     use std::iter::FromIterator;
     let iter = (0_u8..128_u8).map(|x| (x as char));
 

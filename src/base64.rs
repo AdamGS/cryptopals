@@ -10,13 +10,6 @@ const BASE64_TABLE: [char; 64] = [
     '5', '6', '7', '8', '9', '+', '/',
 ];
 
-const ALL_CHARS: [char; 62] = [
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
-    'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
-    'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4',
-    '5', '6', '7', '8', '9',
-];
-
 fn string2hex(string: &str) -> Vec<u8> {
     let mut byte_vec = Vec::new();
     let mut chars = string.chars();
@@ -107,7 +100,7 @@ mod tests {
     use super::*;
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::single_byte_xor_cipher;
-    use crate::utils::{all_chars, hamming_distance, rate_string};
+    use crate::utils::{all_ascii_chars, hamming_distance, rate_string};
     use std::io::Read;
 
     #[test]
@@ -156,7 +149,7 @@ mod tests {
         use std::io::Read;
 
         let mut score_map = HashMap::new();
-        let hex_keys: Vec<u8> = all_chars().iter().map(|b| *b as u8).collect();
+        let hex_keys: Vec<u8> = all_ascii_chars().iter().map(|b| *b as u8).collect();
 
         let mut file = File::open("/home/adam/programming/cryptopals/statics/set1ch4.txt").unwrap();
         let mut s = String::new();
