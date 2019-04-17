@@ -1,3 +1,4 @@
+use crate::bitarray::BitArray;
 use std::collections::HashMap;
 
 const CHAR_FREQUENCY_TABLE: [f64; 26] = [
@@ -28,7 +29,7 @@ pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
 
 pub fn rate_string(input: &str) -> i64 {
     let chars_by_freq = "ETAOINSRHDLUCMFYWGPBVKXQJZ".chars();
-    let freq_zip = chars_by_freq.zip(CHAR_FREQUENCY_TABLE.iter().map(|f| (f * 100f64) as i64));
+    let freq_zip = chars_by_freq.zip(CHAR_FREQUENCY_TABLE.iter().map(|f| (f * 1000f64) as i64));
     let mut frequency_map = HashMap::new();
 
     for (c, f) in freq_zip {
@@ -38,20 +39,23 @@ pub fn rate_string(input: &str) -> i64 {
     let mut score = 0;
 
     for clear_c in input.chars() {
-        score += frequency_map
-            .get(&clear_c.to_ascii_uppercase())
-            .unwrap_or(&0);
+        if clear_c.is_alphabetic(){
+            score += frequency_map.get(&clear_c.to_ascii_uppercase()).unwrap();
+        }
     }
 
     score
 }
 
-pub fn hamming_distance(first: &str, second: &str) -> usize {
-    assert_eq!(first.len(), second.len());
-    use crate::bitarray::BitArray;
+pub fn hamming_distance(first: &[u8], second: &[u8]) -> usize {
+    if first.len() > second.len() {
+        return (first.len() - second.len());
+    } else if first.len() < second.len() {
+        return second.len() - first.len();
+    }
 
-    let mut first_bits = BitArray::new(first.as_bytes(), 1);
-    let mut second_bits = BitArray::new(second.as_bytes(), 1);
+    let mut first_bits = BitArray::new(first, 1);
+    let mut second_bits = BitArray::new(second, 1);
 
     let mut count: usize = 0;
 
@@ -69,4 +73,27 @@ pub fn hamming_distance(first: &str, second: &str) -> usize {
     }
 
     count
+}
+
+pub fn hex_to_char(i: u8) -> char {
+    match i {
+        0x0...0x9 => (i + b'0') as char,
+        0xa...0xf => (i - 0xa + b'a') as char,
+        _ => panic!("hex_to_char only converts short values between 0x0 and 0xf"),
+    }
+}
+
+pub fn char_to_hex(c: char) -> u8 {
+    match c {
+        '0'...'9' => (c as u8 - b'0'),
+        'a'...'f' => 10 + (c as u8 - b'a'),
+        _ => panic!("char_to_hex only converts char values between '0' and 'f'"),
+    }
+}
+
+pub fn all_chars() -> Vec<char> {
+    use std::iter::FromIterator;
+    let iter = (0_u8..128_u8).map(|x| (x as char));
+
+    Vec::from_iter(iter)
 }
