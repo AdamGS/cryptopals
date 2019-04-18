@@ -152,10 +152,18 @@ pub fn frequency_map() -> HashMap<char, f64> {
         ('w', 1.303),
         ('x', 0.195),
         ('y', 1.133),
-        ('z', 0.059)
+        ('z', 0.059),
     ]
     .iter()
     .cloned()
     .collect()
-
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn hamming_distance_test() {
+        let distance = hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes());
+        assert_eq!(distance, 37);
+    }
 }
