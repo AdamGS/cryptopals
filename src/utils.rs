@@ -37,32 +37,23 @@ pub fn rate_string(input: &str) -> i64 {
     score
 }
 
-pub fn hamming_distance(first: &[u8], second: &[u8]) -> usize {
-    if first.len() > second.len() {
-        return first.len() - second.len();
-    } else if first.len() < second.len() {
-        return second.len() - first.len();
+pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
+    if arg1.len() > arg2.len() {
+        return arg1.len() - arg2.len();
+    } else if arg1.len() < arg2.len() {
+        return arg2.len() - arg1.len();
     }
 
-    let mut first_bits = BitArray::new(first, 1);
-    let mut second_bits = BitArray::new(second, 1);
+    let mut first_bits = BitArray::new(arg1, 1);
+    let mut second_bits = BitArray::new(arg2, 1);
 
-    let mut count: usize = 0;
+    let mut count = 0;
 
-    loop {
-        let (f, s) = (first_bits.next(), second_bits.next());
-
-        match (f, s) {
-            (Some(f), Some(s)) => {
-                if f != s {
-                    count += 1;
-                }
-            }
-            _ => break,
-        }
+    while let (Some(f), Some(s)) = (first_bits.next(), second_bits.next()) {
+        count += (f ^ s);
     }
 
-    count
+    count as usize
 }
 
 pub fn hex_to_char(i: u8) -> char {
@@ -82,6 +73,7 @@ pub fn char_to_hex(c: char) -> u8 {
 }
 
 pub fn all_ascii_chars() -> Vec<char> {
+    //TODO: Replace with macro
     use std::iter::FromIterator;
     let iter = (0_u8..128_u8).map(|x| (x as char));
 
@@ -89,6 +81,7 @@ pub fn all_ascii_chars() -> Vec<char> {
 }
 
 pub fn frequency_map() -> HashMap<char, f64> {
+    //TODO: Replace with macro
     [
         (' ', 17.16),
         ('0', 0.551),
