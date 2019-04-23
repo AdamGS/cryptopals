@@ -116,16 +116,10 @@ mod tests {
             let mut chunks = ciphertext.chunks(keysize);
             let mut count = 0;
             let mut dist = 0;
-            loop {
-                let (f, s) = (chunks.next(), chunks.next());
 
-                match (f, s) {
-                    (Some(f), Some(s)) => {
-                        dist += hamming_distance(f, s);
-                        count += 1;
-                    }
-                    _ => break,
-                }
+            while let (Some(f), Some(s)) = (chunks.next(), chunks.next()) {
+                dist += hamming_distance(f, s);
+                count += 1;
             }
 
             let normalized_distance = (dist / count) / keysize;
