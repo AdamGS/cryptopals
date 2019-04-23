@@ -51,7 +51,7 @@ mod tests {
 
         let mut file = File::open("/home/adam/programming/cryptopals/statics/set1ch4.txt").unwrap();
         let mut s = String::new();
-        file.read_to_string(&mut s);
+        file.read_to_string(&mut s).expect("Unable to read file");
         let file_lines = s.lines();
 
         for line in file_lines {
@@ -84,15 +84,11 @@ mod tests {
 
     #[test]
     fn challenge5() {
-        use std::ops::Add;
-
         let cleartext_string =
             "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
 
         let key = "ICE".as_bytes().to_vec();
-
         let r1_bytes = cleartext_string.as_bytes().to_vec();
-
         let r1 = hex2string(repeating_key_xor_cipher(&r1_bytes, &key));
 
         assert_eq!(
@@ -109,7 +105,8 @@ mod tests {
         let mut file: File =
             File::open("/home/adam/programming/cryptopals/statics/set1ch6.txt").unwrap();
         let mut file_string = String::new();
-        file.read_to_string(&mut file_string);
+        file.read_to_string(&mut file_string)
+            .expect("Unable to read file");
 
         let ciphertext = base64tohex(file_string.replace("\n", "").as_str());
 
@@ -138,7 +135,7 @@ mod tests {
 
         vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let final_keysize = vec.iter().map(|(k, v)| *v).next().unwrap();
+        let final_keysize = vec.iter().map(|(_, v)| *v).next().unwrap();
         assert_eq!(final_keysize, 29);
 
         let mut strings = vec![Vec::new(); final_keysize];

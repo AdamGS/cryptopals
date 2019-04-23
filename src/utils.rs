@@ -15,8 +15,8 @@ pub fn euclidean_distance(vec1: Vec<f64>, vec2: Vec<f64>) -> f64 {
 pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
     assert_eq!(arg1.len(), arg2.len());
     let mut x: Vec<u8> = Vec::new();
-    let it = arg1.iter().zip(arg2.iter());
-    for (a, b) in it {
+    let zip = arg1.iter().zip(arg2.iter());
+    for (a, b) in zip {
         x.push(a ^ b);
     }
     x

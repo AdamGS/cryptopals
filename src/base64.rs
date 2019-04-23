@@ -1,8 +1,8 @@
 use crate::bitarray::BitArray;
-use crate::utils::fixed_xor;
 use crate::utils::{char_to_hex, hex_to_char};
 use std::collections::HashMap;
 
+//TODO: Replace with macro
 const BASE64_TABLE: [char; 64] = [
     'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
     'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l',
@@ -25,7 +25,7 @@ pub fn string2hex(string: &str) -> Vec<u8> {
 pub fn hex2string(hex_bytes: Vec<u8>) -> String {
     let mut string = String::new();
 
-    for b in hex_bytes.iter() {
+    for b in hex_bytes {
         let l = b >> 4;
         let r = b & 15;
         string.push(hex_to_char(l));
