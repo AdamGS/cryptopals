@@ -15,6 +15,20 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     r
 }
 
+pub fn aes_ecb_cipher_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
+    use aes::block_cipher_trait::generic_array::GenericArray;
+    use aes::block_cipher_trait::BlockCipher;
+    use aes::Aes128;
+
+    let cipher = Aes128::new(GenericArray::from_slice(key));
+
+    let mut block = GenericArray::from_slice(ciphertext).clone();
+
+    cipher.decrypt_block(&mut block);
+
+    block.to_vec()
+}
+
 pub mod breakers {
     use super::single_byte_xor_cipher;
     use crate::utils::all_ascii_chars;

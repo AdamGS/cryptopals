@@ -1,3 +1,5 @@
+extern crate aes;
+
 mod base64;
 mod bitarray;
 mod ciphers;
@@ -8,7 +10,7 @@ mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher};
-    use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string};
+    use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex};
     use std::collections::HashMap;
 
     #[test]
@@ -151,6 +153,21 @@ mod tests {
 
     #[test]
     fn challenge7() {
-        unimplemented!();
+        use crate::ciphers::aes_ecb_cipher_decrypt;
+        use std::io::Read;
+        use std::ops::Add;
+
+        let ciphertext = read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch7.txt");
+
+        let key = "YELLOW SUBMARINE";
+
+        let mut s = String::new();
+
+        for chunk in ciphertext.chunks(16) {
+            let r = aes_ecb_cipher_decrypt(chunk, key.as_bytes());
+            s.push_str(String::from_utf8(r).unwrap().as_str());
+        }
+
+        println!("{}", s);
     }
 }

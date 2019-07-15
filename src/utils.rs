@@ -50,7 +50,7 @@ pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
     let mut count = 0;
 
     while let (Some(f), Some(s)) = (first_bits.next(), second_bits.next()) {
-        count += (f ^ s);
+        count += f ^ s;
     }
 
     count as usize
@@ -81,7 +81,6 @@ pub fn all_ascii_chars() -> Vec<char> {
 }
 
 pub fn frequency_map() -> HashMap<char, f64> {
-    //TODO: Replace with macro
     [
         (' ', 17.16),
         ('0', 0.551),
@@ -151,6 +150,20 @@ pub fn frequency_map() -> HashMap<char, f64> {
     .cloned()
     .collect()
 }
+
+pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
+    use std::fs;
+    use std::io::Read;
+    use crate::base64::base64tohex;
+
+    let s = fs::read_to_string(path).unwrap();
+
+    let modified_string = s.replace("\n", "").clone();
+
+    let content = base64tohex(modified_string.as_str());
+    content
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

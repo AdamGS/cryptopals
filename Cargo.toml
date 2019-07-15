@@ -5,3 +5,5 @@ authors = ["Adam Gutglick <adamgsal@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+aes = "0.3.2"
+block-modes = "0.3.3"
