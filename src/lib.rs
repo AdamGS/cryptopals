@@ -10,7 +10,9 @@ mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher};
-    use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex};
+    use crate::utils::{
+        all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
+    };
     use std::collections::HashMap;
 
     #[test]
@@ -101,16 +103,8 @@ mod tests {
 
     #[test]
     fn challenge6() {
-        use std::fs::File;
-        use std::io::Read;
-
-        let mut file: File =
-            File::open("/home/adam/programming/cryptopals/statics/set1ch6.txt").unwrap();
-        let mut file_string = String::new();
-        file.read_to_string(&mut file_string)
-            .expect("Unable to read file");
-
-        let ciphertext = base64tohex(file_string.replace("\n", "").as_str());
+        let ciphertext =
+            read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch6.txt");
 
         let mut vec = Vec::new();
 
@@ -157,7 +151,8 @@ mod tests {
         use std::io::Read;
         use std::ops::Add;
 
-        let ciphertext = read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch7.txt");
+        let ciphertext =
+            read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch7.txt");
 
         let key = "YELLOW SUBMARINE";
 

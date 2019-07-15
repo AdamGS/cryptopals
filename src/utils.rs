@@ -152,9 +152,9 @@ pub fn frequency_map() -> HashMap<char, f64> {
 }
 
 pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
+    use crate::base64::base64tohex;
     use std::fs;
     use std::io::Read;
-    use crate::base64::base64tohex;
 
     let s = fs::read_to_string(path).unwrap();
 
