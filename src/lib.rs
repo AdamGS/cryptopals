@@ -9,7 +9,9 @@ mod utils;
 mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher};
+    use crate::ciphers::{
+        aes_ecb_cipher_decrypt, repeating_key_xor_cipher, single_byte_xor_cipher,
+    };
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
     };
@@ -148,6 +150,7 @@ mod tests {
     #[test]
     fn challenge7() {
         use crate::ciphers::aes_ecb_cipher_decrypt;
+        use std::fs;
         use std::io::Read;
         use std::ops::Add;
 
@@ -165,4 +168,35 @@ mod tests {
 
         println!("{}", s);
     }
+
+    #[test]
+    fn challenge8() {
+        use std::fs::File;
+        use std::io::Read;
+
+        let key = "YELLOW SUBMARINE";
+
+        let mut file = File::open("/home/adam/programming/cryptopals/statics/ch8.txt").unwrap();
+        let mut s = String::new();
+        file.read_to_string(&mut s).expect("Unable to read file");
+        let file_lines = s.lines().map(|l| base64tohex(l));
+
+        let mut result_map: HashMap<usize, usize> = Default::default();
+
+        for (idx, line) in file_lines.enumerate() {
+            for chunk in line.chunks(16) {
+                for internal in line.chunks(16) {
+                    if internal == chunk {
+                        *result_map.entry(idx).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+
+        let ecb_line = result_map.iter().max_by(|x, y| x.1.cmp(y.1)).unwrap();
+
+        println!("The line is the AES-ECB encrypted data is: {}", ecb_line.0);
+        assert_eq!(ecb_line, 132);
+    }
+
 }
