@@ -196,7 +196,15 @@ mod tests {
         let ecb_line = result_map.iter().max_by(|x, y| x.1.cmp(y.1)).unwrap();
 
         println!("The line is the AES-ECB encrypted data is: {}", ecb_line.0);
-        assert_eq!(ecb_line, 132);
+        assert_eq!(*ecb_line.0, 132usize);
     }
 
+    #[test]
+    fn challenge9() {
+        use crate::utils::pkcs7_pad;
+        assert_eq!(
+            String::from_utf8(pkcs7_pad("YELLOW_SUBMARINE".as_bytes(), 20)).unwrap(),
+            "YELLOW_SUBMARINE\x04\x04\x04\x04"
+        )
+    }
 }
