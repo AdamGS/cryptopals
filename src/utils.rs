@@ -164,9 +164,18 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
     content
 }
 
+pub fn pkcs7_pad(hex_array: &[u8], block_size: usize) -> Vec<u8> {
+    let pad_char = (block_size - hex_array.len() % block_size) as u8;
+
+    let pad_length = block_size - (hex_array.len() % block_size);
+
+    [hex_array, vec![pad_char; pad_length].as_slice()].concat()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn hamming_distance_test() {
         let distance = hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes());
