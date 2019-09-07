@@ -15,6 +15,10 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     r
 }
 
+pub fn aes_cbc_cipher(ciphertext: &[u8], key: &[u8], iv: &[u8]) {
+    unimplemented!()
+}
+
 pub fn aes_ecb_cipher_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     use aes::block_cipher_trait::generic_array::GenericArray;
     use aes::block_cipher_trait::BlockCipher;
@@ -25,6 +29,20 @@ pub fn aes_ecb_cipher_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     let mut block = GenericArray::from_slice(ciphertext).clone();
 
     cipher.decrypt_block(&mut block);
+
+    block.to_vec()
+}
+
+pub fn aes_ecb_cipher_encrypt(cleartext: &[u8], key: &[u8]) -> Vec<u8> {
+    use aes::block_cipher_trait::generic_array::GenericArray;
+    use aes::block_cipher_trait::BlockCipher;
+    use aes::Aes128;
+
+    let cipher = Aes128::new(GenericArray::from_slice(key));
+
+    let mut block = GenericArray::from_slice(cleartext).clone();
+
+    cipher.encrypt_block(&mut block);
 
     block.to_vec()
 }
@@ -45,7 +63,8 @@ pub mod breakers {
                 .iter()
                 .map(|b| *b as char)
                 .collect();
-            let cleartext_string = String::from_iter(cleartext);;
+            let cleartext_string = String::from_iter(cleartext);
+            ;
 
             let string_rating = rate_string(&cleartext_string.as_str());
 
@@ -56,5 +75,23 @@ pub mod breakers {
         }
 
         suspected_key
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ecb_encrypt_decrypt_test() {
+        let clear_text = "YELLOW SUBMARINE".as_bytes();
+        let key = "AAAAAAAAAAAAAAAA".as_bytes();
+        let ciphertext = aes_ecb_cipher_encrypt(clear_text, key);
+        let new_cleartext = String::from_utf8(aes_ecb_cipher_decrypt(ciphertext.as_slice(), key)).unwrap();
+
+        assert!(
+            "YELLOW SUBMARINE"
+                == new_cleartext
+        )
     }
 }
