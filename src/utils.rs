@@ -58,16 +58,16 @@ pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
 
 pub fn hex_to_char(i: u8) -> char {
     match i {
-        0x0...0x9 => (i + b'0') as char,
-        0xa...0xf => (i - 0xa + b'a') as char,
+        0x0..=0x9 => (i + b'0') as char,
+        0xa..=0xf => (i - 0xa + b'a') as char,
         _ => panic!("hex_to_char only converts short values between 0x0 and 0xf"),
     }
 }
 
 pub fn char_to_hex(c: char) -> u8 {
     match c {
-        '0'...'9' => (c as u8 - b'0'),
-        'a'...'f' => 10 + (c as u8 - b'a'),
+        '0'..='9' => (c as u8 - b'0'),
+        'a'..='f' => 10 + (c as u8 - b'a'),
         _ => panic!("char_to_hex only converts char values between '0' and 'f'"),
     }
 }
@@ -160,14 +160,13 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
 
     let modified_string = s.replace("\n", "").clone();
 
-    let content = base64tohex(modified_string.as_str());
-    content
+    base64tohex(modified_string.as_str())
 }
 
 pub fn pkcs7_pad(hex_array: &[u8], block_size: usize) -> Vec<u8> {
     let pad_char = (block_size - hex_array.len() % block_size) as u8;
 
-    let pad_length = block_size - (hex_array.len() % block_size);
+    let pad_length = (block_size - (hex_array.len() % block_size)) % block_size;
 
     [hex_array, vec![pad_char; pad_length].as_slice()].concat()
 }
@@ -180,5 +179,11 @@ mod tests {
     fn hamming_distance_test() {
         let distance = hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes());
         assert_eq!(distance, 37);
+    }
+
+    #[test]
+    fn no_padding_needed_test() {
+        let padded = pkcs7_pad("YELLOW SUBMARINE".as_bytes(), 16);
+        assert_eq!("YELLOW SUBMARINE", String::from_utf8(padded).unwrap());
     }
 }
