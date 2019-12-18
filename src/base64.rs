@@ -82,7 +82,7 @@ pub fn base64tohex(string: &str) -> Vec<u8> {
     for (i, two_bits) in bits.enumerate() {
         if i % 4 != 0 {
             has += 1;
-            r = (r | two_bits) << if has % 4 == 0 { 0 } else { 2 };;
+            r = (r | two_bits) << if has % 4 == 0 { 0 } else { 2 };
 
             if has == 4 {
                 v.push(r);
@@ -122,5 +122,4 @@ mod tests {
     fn hex2string_test() {
         assert_eq!(hex2string(string2hex("1fa2")), "1fa2");
     }
-
 }
