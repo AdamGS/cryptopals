@@ -10,7 +10,7 @@ mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{
-        aes_ecb_cipher_decrypt, repeating_key_xor_cipher, single_byte_xor_cipher,
+        aes_ecb_cipher_decrypt, repeating_key_xor_cipher, single_byte_xor_cipher, AesCbcCipher,
     };
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
@@ -55,7 +55,7 @@ mod tests {
         let mut score_map = HashMap::new();
         let hex_keys: Vec<u8> = all_ascii_chars().iter().map(|b| *b as u8).collect();
 
-        let mut file = File::open("/home/adam/programming/cryptopals/statics/set1ch4.txt").unwrap();
+        let mut file = File::open("statics/set1ch4.txt").unwrap();
         let mut s = String::new();
         file.read_to_string(&mut s).expect("Unable to read file");
         let file_lines = s.lines();
@@ -105,8 +105,7 @@ mod tests {
 
     #[test]
     fn challenge6() {
-        let ciphertext =
-            read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch6.txt");
+        let ciphertext = read_base64file_to_hex("statics/set1ch6.txt");
 
         let mut vec = Vec::new();
 
@@ -154,8 +153,7 @@ mod tests {
         use std::io::Read;
         use std::ops::Add;
 
-        let ciphertext =
-            read_base64file_to_hex("/home/adam/programming/cryptopals/statics/set1ch7.txt");
+        let ciphertext = read_base64file_to_hex("statics/set1ch7.txt");
 
         let key = "YELLOW SUBMARINE";
 
@@ -176,7 +174,7 @@ mod tests {
 
         let key = "YELLOW SUBMARINE";
 
-        let mut file = File::open("/home/adam/programming/cryptopals/statics/ch8.txt").unwrap();
+        let mut file = File::open("statics/ch8.txt").unwrap();
         let mut s = String::new();
         file.read_to_string(&mut s).expect("Unable to read file");
         let file_lines = s.lines().map(|l| base64tohex(l));
@@ -206,5 +204,21 @@ mod tests {
             String::from_utf8(pkcs7_pad("YELLOW_SUBMARINE".as_bytes(), 20)).unwrap(),
             "YELLOW_SUBMARINE\x04\x04\x04\x04"
         )
+    }
+
+    #[test]
+    fn challenge10() {
+        let cipher = AesCbcCipher::new("AAAAAAAAAAAAAAAA".as_bytes(), 16, 1 as char);
+        let text = "YELLOW SUBMARINEYELLOW SUBMARINE";
+
+        let result_str = String::from_utf8(
+            cipher
+                .decrypt(cipher.encrypt(text.as_bytes()).as_slice())
+                .as_slice()
+                .to_vec(),
+        )
+        .unwrap();
+
+        assert_eq!(text, result_str);
     }
 }
