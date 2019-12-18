@@ -5,30 +5,26 @@ use std::iter;
 pub struct AesCbcCipher<'a> {
     key: &'a [u8],
     block_size: usize,
-    iv_char: char,
+    iv: &'a [u8],
 }
 
 impl AesCbcCipher<'_> {
-    pub fn new(key: &'static [u8], block_size: usize, iv_char: char) -> Self {
+    pub fn new(key: &'static [u8], block_size: usize, iv: &'static [u8]) -> Self {
         AesCbcCipher {
             key,
             block_size,
-            iv_char,
+            iv,
         }
     }
 
     pub fn encrypt(&self, input: &[u8]) -> Vec<u8> {
         let padded_text = pkcs7_pad(input, self.block_size);
 
-        let mut iv: Vec<u8> = iter::repeat(self.iv_char as u8)
-            .take(self.block_size)
-            .collect();
-
         padded_text
             .chunks(self.block_size)
             .fold(Vec::new(), |mut acc: Vec<u8>, curr_block| {
                 let mut xored_value = if acc.is_empty() {
-                    fixed_xor(curr_block.to_vec(), iv.clone())
+                    fixed_xor(curr_block.to_vec(), self.iv.to_vec())
                 } else {
                     fixed_xor(
                         curr_block.to_vec(),
@@ -47,17 +43,13 @@ impl AesCbcCipher<'_> {
     pub fn decrypt(&self, input: &[u8]) -> Vec<u8> {
         let padded_text = pkcs7_pad(input, self.block_size);
 
-        let mut iv: Vec<u8> = iter::repeat(self.iv_char as u8)
-            .take(self.block_size)
-            .collect();
-
         padded_text.chunks(self.block_size).enumerate().fold(
             Vec::new(),
             |mut acc: Vec<u8>, (index, curr_block)| {
                 let decrypted_block = aes_ecb_cipher_decrypt(curr_block, self.key);
 
                 let mut xored_value = if acc.is_empty() {
-                    fixed_xor(decrypted_block, iv.clone())
+                    fixed_xor(decrypted_block, self.iv.to_vec())
                 } else {
                     let ciphertext_blocks: Vec<&[u8]> =
                         padded_text.chunks(self.block_size).collect();
