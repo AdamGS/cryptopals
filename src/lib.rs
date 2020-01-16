@@ -9,9 +9,8 @@ mod utils;
 mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{
-        aes_ecb_cipher_decrypt, repeating_key_xor_cipher, single_byte_xor_cipher, AesCbcCipher,
-    };
+    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher};
+    use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
     };
@@ -148,7 +147,6 @@ mod tests {
 
     #[test]
     fn challenge7() {
-        use crate::ciphers::aes_ecb_cipher_decrypt;
         use std::fs;
         use std::io::Read;
         use std::ops::Add;
@@ -156,11 +154,12 @@ mod tests {
         let ciphertext = read_base64file_to_hex("statics/set1ch7.txt");
 
         let key = "YELLOW SUBMARINE";
+        let cipher = AesEcbCipher::new(key.as_bytes());
 
         let mut s = String::new();
 
         for chunk in ciphertext.chunks(16) {
-            let r = aes_ecb_cipher_decrypt(chunk, key.as_bytes());
+            let r = cipher.decrypt(chunk);
             s.push_str(String::from_utf8(r).unwrap().as_str());
         }
 
@@ -172,8 +171,6 @@ mod tests {
         use std::fs::File;
         use std::io::Read;
 
-        let key = "YELLOW SUBMARINE";
-
         let mut file = File::open("statics/ch8.txt").unwrap();
         let mut s = String::new();
         file.read_to_string(&mut s).expect("Unable to read file");
@@ -181,9 +178,13 @@ mod tests {
 
         let mut result_map: HashMap<usize, usize> = Default::default();
 
+        let block_size = 16;
+
+        // Count how many block of block_size repeat within each line,
+        // The line with the most repeats is assumed to be encrypted in ecb mode.
         for (idx, line) in file_lines.enumerate() {
-            for chunk in line.chunks(16) {
-                for internal in line.chunks(16) {
+            for chunk in line.chunks(block_size) {
+                for internal in line.chunks(block_size) {
                     if internal == chunk {
                         *result_map.entry(idx).or_insert(0) += 1;
                     }
@@ -208,17 +209,18 @@ mod tests {
 
     #[test]
     fn challenge10() {
-        let cipher = AesCbcCipher::new("AAAAAAAAAAAAAAAA".as_bytes(), 16, 1 as char);
+        use crate::ciphers::AesCbcCipher;
+        let cipher = AesCbcCipher::new(
+            "AAAAAAAAAAAAAAAA".as_bytes(),
+            16,
+            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".as_bytes(),
+        );
         let text = "YELLOW SUBMARINEYELLOW SUBMARINE";
 
-        let result_str = String::from_utf8(
-            cipher
-                .decrypt(cipher.encrypt(text.as_bytes()).as_slice())
-                .as_slice()
-                .to_vec(),
-        )
-        .unwrap();
+        let ciphertext = cipher.encrypt(text.as_bytes());
 
-        assert_eq!(text, result_str);
+        let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
+
+        assert_eq!(text, new_cleartext);
     }
 }

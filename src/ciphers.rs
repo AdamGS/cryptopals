@@ -1,29 +1,71 @@
-use crate::utils::{fixed_xor, frequency_map, pkcs7_pad};
-use itertools::Itertools;
-use std::iter;
+use crate::utils::{fixed_xor, pkcs7_pad};
 
-pub struct AesCbcCipher<'a> {
-    key: &'a [u8],
-    block_size: usize,
-    iv: &'a [u8],
+use aes::block_cipher_trait::generic_array::GenericArray;
+use aes::block_cipher_trait::BlockCipher;
+use aes::Aes128;
+
+pub trait Cipher {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
 }
 
-impl AesCbcCipher<'_> {
-    pub fn new(key: &'static [u8], block_size: usize, iv: &'static [u8]) -> Self {
+pub struct AesCbcCipher<'b> {
+    key: &'b [u8],
+    block_size: usize,
+    iv: &'b [u8],
+}
+
+pub struct AesEcbCipher<'a> {
+    key: &'a [u8],
+}
+
+impl<'c> AesEcbCipher<'c> {
+    pub fn new(key: &'c [u8]) -> Self {
+        AesEcbCipher { key }
+    }
+}
+
+impl<'a> Cipher for AesEcbCipher<'a> {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
+        let cipher = Aes128::new(GenericArray::from_slice(self.key));
+
+        let mut block = GenericArray::from_slice(cleartext).clone();
+
+        cipher.encrypt_block(&mut block);
+
+        block.to_vec()
+    }
+
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+        let cipher = Aes128::new(GenericArray::from_slice(self.key));
+
+        let mut block = GenericArray::from_slice(ciphertext).clone();
+
+        cipher.decrypt_block(&mut block);
+
+        block.to_vec()
+    }
+}
+
+impl<'b> AesCbcCipher<'b> {
+    pub fn new(key: &'b [u8], block_size: usize, iv: &'b [u8]) -> Self {
         AesCbcCipher {
             key,
             block_size,
             iv,
         }
     }
+}
 
-    pub fn encrypt(&self, input: &[u8]) -> Vec<u8> {
-        let padded_text = pkcs7_pad(input, self.block_size);
+impl<'b> Cipher for AesCbcCipher<'b> {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
+        let padded_text = pkcs7_pad(cleartext, self.block_size);
+        let ecb = AesEcbCipher::new(self.key);
 
         padded_text
             .chunks(self.block_size)
             .fold(Vec::new(), |mut acc: Vec<u8>, curr_block| {
-                let mut xored_value = if acc.is_empty() {
+                let xored_value = if acc.is_empty() {
                     fixed_xor(curr_block.to_vec(), self.iv.to_vec())
                 } else {
                     fixed_xor(
@@ -32,7 +74,7 @@ impl AesCbcCipher<'_> {
                     )
                 };
 
-                let mut encrypted_block = aes_ecb_cipher_encrypt(xored_value.as_slice(), self.key);
+                let mut encrypted_block = ecb.encrypt(xored_value.as_slice());
 
                 acc.append(encrypted_block.as_mut());
 
@@ -40,13 +82,14 @@ impl AesCbcCipher<'_> {
             })
     }
 
-    pub fn decrypt(&self, input: &[u8]) -> Vec<u8> {
-        let padded_text = pkcs7_pad(input, self.block_size);
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+        let padded_text = pkcs7_pad(ciphertext, self.block_size);
+        let ecb = AesEcbCipher::new(self.key);
 
         padded_text.chunks(self.block_size).enumerate().fold(
             Vec::new(),
             |mut acc: Vec<u8>, (index, curr_block)| {
-                let decrypted_block = aes_ecb_cipher_decrypt(curr_block, self.key);
+                let decrypted_block = ecb.decrypt(curr_block);
 
                 let mut xored_value = if acc.is_empty() {
                     fixed_xor(decrypted_block, self.iv.to_vec())
@@ -77,34 +120,6 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     }
 
     r
-}
-
-pub fn aes_ecb_cipher_decrypt(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
-    use aes::block_cipher_trait::generic_array::GenericArray;
-    use aes::block_cipher_trait::BlockCipher;
-    use aes::Aes128;
-
-    let cipher = Aes128::new(GenericArray::from_slice(key));
-
-    let mut block = GenericArray::from_slice(ciphertext).clone();
-
-    cipher.decrypt_block(&mut block);
-
-    block.to_vec()
-}
-
-pub fn aes_ecb_cipher_encrypt(cleartext: &[u8], key: &[u8]) -> Vec<u8> {
-    use aes::block_cipher_trait::generic_array::GenericArray;
-    use aes::block_cipher_trait::BlockCipher;
-    use aes::Aes128;
-
-    let cipher = Aes128::new(GenericArray::from_slice(key));
-
-    let mut block = GenericArray::from_slice(cleartext).clone();
-
-    cipher.encrypt_block(&mut block);
-
-    block.to_vec()
 }
 
 pub mod breakers {
@@ -145,10 +160,10 @@ mod tests {
     fn ecb_encrypt_decrypt_test() {
         let clear_text = "YELLOW SUBMARINE".as_bytes();
         let key = "AAAAAAAAAAAAAAAA".as_bytes();
-        let ciphertext = aes_ecb_cipher_encrypt(clear_text, key);
-        let new_cleartext =
-            String::from_utf8(aes_ecb_cipher_decrypt(ciphertext.as_slice(), key)).unwrap();
+        let cipher = AesEcbCipher::new(key);
+        let ciphertext = cipher.encrypt(clear_text);
+        let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
 
-        assert!("YELLOW SUBMARINE" == new_cleartext)
+        assert_eq!("YELLOW SUBMARINE", new_cleartext)
     }
 }
