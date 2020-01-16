@@ -158,7 +158,7 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
 
     let s = fs::read_to_string(path).unwrap();
 
-    let modified_string = s.replace("\n", "").clone();
+    let modified_string = s.replace("\n", "");
 
     base64tohex(modified_string.as_str())
 }
