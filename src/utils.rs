@@ -14,12 +14,9 @@ pub fn euclidean_distance(vec1: Vec<f64>, vec2: Vec<f64>) -> f64 {
 
 pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
     assert_eq!(arg1.len(), arg2.len());
-    let mut x: Vec<u8> = Vec::new();
     let zip = arg1.iter().zip(arg2.iter());
-    for (a, b) in zip {
-        x.push(a ^ b);
-    }
-    x
+
+    zip.map(|(a, b)| a ^ b).collect()
 }
 
 pub fn rate_string(input: &str) -> i64 {
@@ -162,12 +159,20 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
     base64tohex(modified_string.as_str())
 }
 
-pub fn pkcs7_pad(hex_array: &[u8], block_size: usize) -> Vec<u8> {
-    let pad_char = (block_size - hex_array.len() % block_size) as u8;
+pub fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
+    let pad_char = (block_size - byte_slice.len() % block_size) as u8;
 
-    let pad_length = (block_size - (hex_array.len() % block_size)) % block_size;
+    let pad_length = (block_size - (byte_slice.len() % block_size)) % block_size;
 
-    [hex_array, vec![pad_char; pad_length].as_slice()].concat()
+    [byte_slice, vec![pad_char; pad_length].as_slice()].concat()
+}
+
+pub mod random {
+    use rand::{Rng, RngCore};
+    pub fn get_rand_bytes(length: usize) -> Vec<u8> {
+        let mut rng = rand::thread_rng();
+        (0..length).map(|_| rng.gen()).collect()
+    }
 }
 
 #[cfg(test)]
