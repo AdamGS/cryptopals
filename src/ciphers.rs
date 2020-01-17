@@ -1,20 +1,32 @@
 use crate::utils::{fixed_xor, pkcs7_pad};
 
+use crate::utils::random::get_rand_bytes;
 use aes::block_cipher_trait::generic_array::GenericArray;
 use aes::block_cipher_trait::BlockCipher;
 use aes::Aes128;
+use rand::Rng;
+use itertools::Itertools;
+
+#[derive(Debug)]
+pub enum AesBlockCipher<'a> {
+    CBC(AesCbcCipher<'a>),
+    ECB(AesEcbCipher<'a>),
+}
+
 
 pub trait Cipher {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
 }
 
+#[derive(Debug)]
 pub struct AesCbcCipher<'b> {
     key: &'b [u8],
     block_size: usize,
     iv: &'b [u8],
 }
 
+#[derive(Debug)]
 pub struct AesEcbCipher<'a> {
     key: &'a [u8],
 }
@@ -29,21 +41,30 @@ impl<'a> Cipher for AesEcbCipher<'a> {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
 
-        let mut block = GenericArray::from_slice(cleartext).clone();
+        let mut v = Vec::new();
 
-        cipher.encrypt_block(&mut block);
+        //let mut block = GenericArray::from_slice(cleartext).clone();
 
-        block.to_vec()
+        for c in cleartext.chunks(16) {
+            let mut block = GenericArray::from_slice(c).clone();
+            cipher.encrypt_block(&mut block);
+            v.append(&mut block.to_vec());
+        }
+
+        v
     }
 
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
+        let mut v = Vec::new();
 
-        let mut block = GenericArray::from_slice(ciphertext).clone();
+        for mut c in ciphertext.chunks(16) {
+            let mut block = GenericArray::from_slice(&mut c).clone();
+            cipher.decrypt_block(&mut block);
+            v.append(&mut block.to_vec());
+        }
 
-        cipher.decrypt_block(&mut block);
-
-        block.to_vec()
+        v
     }
 }
 
@@ -122,6 +143,23 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     r
 }
 
+pub fn encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
+    let mut rng = rand::thread_rng();
+    let pre_pad = rng.gen_range(5, 11);
+    let post_pad = rng.gen_range(5, 11);
+    let padded = [
+        get_rand_bytes(pre_pad),
+        cleartext.to_vec(),
+        get_rand_bytes(post_pad),
+    ]
+    .concat();
+
+    match cipher {
+        AesBlockCipher::CBC(c) => c.encrypt(&padded),
+        AesBlockCipher::ECB(c) => c.encrypt(&padded),
+    }
+}
+
 pub mod breakers {
     use super::single_byte_xor_cipher;
     use crate::utils::all_ascii_chars;
@@ -161,6 +199,7 @@ mod tests {
         let clear_text = "YELLOW SUBMARINE".as_bytes();
         let key = "AAAAAAAAAAAAAAAA".as_bytes();
         let cipher = AesEcbCipher::new(key);
+
         let ciphertext = cipher.encrypt(clear_text);
         let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
 
