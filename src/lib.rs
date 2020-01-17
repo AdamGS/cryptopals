@@ -9,12 +9,15 @@ mod utils;
 mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher};
+    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
     };
+    use rand::Rng;
+    use std::any::Any;
     use std::collections::HashMap;
+    use std::ops::Deref;
 
     #[test]
     fn challenge1() {
@@ -156,14 +159,9 @@ mod tests {
         let key = "YELLOW SUBMARINE";
         let cipher = AesEcbCipher::new(key.as_bytes());
 
-        let mut s = String::new();
+        let s = cipher.decrypt(ciphertext.as_slice());
 
-        for chunk in ciphertext.chunks(16) {
-            let r = cipher.decrypt(chunk);
-            s.push_str(String::from_utf8(r).unwrap().as_str());
-        }
-
-        println!("{}", s);
+        println!("{:?}", String::from_utf8(s).unwrap());
     }
 
     #[test]
@@ -215,12 +213,34 @@ mod tests {
             16,
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".as_bytes(),
         );
-        let text = "YELLOW SUBMARINEYELLOW SUBMARINE";
-
-        let ciphertext = cipher.encrypt(text.as_bytes());
-
+        let cleartext = "YELLOW SUBMARINEYELLOW SUBMARINE";
+        let ciphertext = cipher.encrypt(cleartext.as_bytes());
         let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
 
-        assert_eq!(text, new_cleartext);
+        assert_eq!(cleartext, new_cleartext);
+    }
+
+    #[test]
+    fn challenge11() {
+        use crate::ciphers::encryption_oracle;
+        use crate::ciphers::AesBlockCipher;
+        use crate::utils::random::get_rand_bytes;
+
+        let text = "YELLOW SUBMARINEYELLOW SUBMARINE";
+
+        let mut rng = rand::thread_rng();
+        let coinflip: i32 = rng.gen();
+        let key = get_rand_bytes(16);
+        let iv = get_rand_bytes(16);
+
+        let cipher: AesBlockCipher = match coinflip % 2 == 0 {
+            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_ref())),
+            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), 16, iv.as_slice())),
+        };
+
+        let ciphertext = encryption_oracle(text.as_bytes(), cipher);
+
+        println!("{:?}", ciphertext);
+        assert_eq!(true, true);
     }
 }
