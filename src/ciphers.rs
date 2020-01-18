@@ -7,7 +7,7 @@ use aes::Aes128;
 use itertools::Itertools;
 use rand::Rng;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AesBlockCipher<'a> {
     CBC(AesCbcCipher<'a>),
     ECB(AesEcbCipher<'a>),
@@ -18,31 +18,33 @@ pub trait Cipher {
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct AesCbcCipher<'b> {
     key: &'b [u8],
     block_size: usize,
     iv: &'b [u8],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct AesEcbCipher<'a> {
     key: &'a [u8],
+    block_size: usize,
 }
 
 impl<'c> AesEcbCipher<'c> {
-    pub fn new(key: &'c [u8]) -> Self {
-        AesEcbCipher { key }
+    pub fn new(key: &'c [u8], block_size: usize) -> Self {
+        assert_eq!(key.len(), block_size);
+        AesEcbCipher { key, block_size }
     }
 }
 
 impl<'a> Cipher for AesEcbCipher<'a> {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
-        let padded_text = pkcs7_pad(cleartext, 16);
+        let padded_text = pkcs7_pad(cleartext, self.block_size);
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
         let mut v = Vec::new();
 
-        for c in padded_text.chunks(16) {
+        for c in padded_text.chunks(self.block_size) {
             let mut block = GenericArray::from_slice(c).clone();
             cipher.encrypt_block(&mut block);
             v.append(&mut block.to_vec());
@@ -55,7 +57,7 @@ impl<'a> Cipher for AesEcbCipher<'a> {
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
         let mut v = Vec::new();
 
-        for mut c in ciphertext.chunks(16) {
+        for c in ciphertext.chunks(self.block_size) {
             let mut block = GenericArray::from_slice(&c).clone();
             cipher.decrypt_block(&mut block);
             v.append(&mut block.to_vec());
@@ -78,7 +80,7 @@ impl<'b> AesCbcCipher<'b> {
 impl<'b> Cipher for AesCbcCipher<'b> {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
         let padded_text = pkcs7_pad(cleartext, self.block_size);
-        let ecb = AesEcbCipher::new(self.key);
+        let ecb = AesEcbCipher::new(self.key, self.block_size);
 
         padded_text
             .chunks(self.block_size)
@@ -101,7 +103,7 @@ impl<'b> Cipher for AesCbcCipher<'b> {
     }
 
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
-        let ecb = AesEcbCipher::new(self.key);
+        let ecb = AesEcbCipher::new(self.key, self.block_size);
 
         ciphertext
             .to_vec()
@@ -195,7 +197,7 @@ mod tests {
     fn ecb_encrypt_decrypt_test() {
         let clear_text = "YELLOW SUBMARINE".as_bytes();
         let key = "AAAAAAAAAAAAAAAA".as_bytes();
-        let cipher = AesEcbCipher::new(key);
+        let cipher = AesEcbCipher::new(key, 16);
 
         let ciphertext = cipher.encrypt(clear_text);
         let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();

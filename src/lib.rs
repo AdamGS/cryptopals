@@ -157,7 +157,7 @@ mod tests {
         let ciphertext = read_base64file_to_hex("statics/set1ch7.txt");
 
         let key = "YELLOW SUBMARINE";
-        let cipher = AesEcbCipher::new(key.as_bytes());
+        let cipher = AesEcbCipher::new(key.as_bytes(), 16);
 
         let s = cipher.decrypt(ciphertext.as_slice());
 
@@ -226,21 +226,43 @@ mod tests {
         use crate::ciphers::AesBlockCipher;
         use crate::utils::random::get_rand_bytes;
 
-        let text = "YELLOW SUBMARINEYELLOW SUBMARINE";
+        let text = String::from_utf8(vec![65u8; 200]).unwrap();
+
+        let block_size = 16;
 
         let mut rng = rand::thread_rng();
         let coinflip: i32 = rng.gen();
-        let key = get_rand_bytes(16);
-        let iv = get_rand_bytes(16);
+        let key = get_rand_bytes(block_size);
+        let iv = get_rand_bytes(block_size);
 
         let cipher: AesBlockCipher = match coinflip % 2 == 0 {
-            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_ref())),
-            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), 16, iv.as_slice())),
+            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_ref(), block_size)),
+            false => {
+                AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), block_size, iv.as_slice()))
+            }
         };
 
-        let ciphertext = encryption_oracle(text.as_bytes(), cipher);
+        let ciphertext = encryption_oracle(text.as_bytes(), cipher.clone());
 
-        println!("{:?}", ciphertext);
-        assert_eq!(true, true);
+        let mut sum = 0;
+
+        // Count identical blocks, becase ECB has those for the input we engineered
+        for a in ciphertext.chunks(16) {
+            for b in ciphertext.chunks(16) {
+                if hamming_distance(a, b) == 0 {
+                    sum += 1;
+                }
+            }
+        }
+
+        // 50 Because it has some buffer
+        let detected = if sum > 50 { "ECB" } else { "CBC" };
+
+        let name = match cipher {
+            AesBlockCipher::CBC(c) => "CBC",
+            AesBlockCipher::ECB(c) => "ECB",
+        };
+
+        assert_eq!(name, detected);
     }
 }
