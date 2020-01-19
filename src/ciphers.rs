@@ -40,11 +40,10 @@ impl<'c> AesEcbCipher<'c> {
 
 impl<'a> Cipher for AesEcbCipher<'a> {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
-        let padded_text = pkcs7_pad(cleartext, self.block_size);
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
         let mut v = Vec::new();
 
-        for c in padded_text.chunks(self.block_size) {
+        for c in cleartext.chunks(self.block_size) {
             let mut block = GenericArray::from_slice(c).clone();
             cipher.encrypt_block(&mut block);
             v.append(&mut block.to_vec());
@@ -120,6 +119,8 @@ impl<'b> Cipher for AesCbcCipher<'b> {
                     fixed_xor(decrypted_block, ciphertext_blocks[index - 1].to_vec())
                 };
 
+                //println!("{}", String::from_utf8(xored_value.clone()).unwrap());
+
                 acc.append(xored_value.as_mut());
 
                 acc
@@ -146,12 +147,15 @@ pub fn encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
     let mut rng = rand::thread_rng();
     let pre_pad = rng.gen_range(5, 11);
     let post_pad = rng.gen_range(5, 11);
-    let padded = [
-        get_rand_bytes(pre_pad),
-        cleartext.to_vec(),
-        get_rand_bytes(post_pad),
-    ]
-    .concat();
+    let padded = pkcs7_pad(
+        &[
+            get_rand_bytes(pre_pad),
+            cleartext.to_vec(),
+            get_rand_bytes(post_pad),
+        ]
+        .concat(),
+        16,
+    );
 
     match cipher {
         AesBlockCipher::CBC(c) => c.encrypt(&padded),

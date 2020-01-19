@@ -12,7 +12,8 @@ mod tests {
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
-        all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
+        all_ascii_chars, fixed_xor, hamming_distance, pkcs7_pad, rate_string,
+        read_base64file_to_hex,
     };
     use rand::Rng;
     use std::any::Any;
@@ -215,9 +216,9 @@ mod tests {
         );
         let cleartext = "YELLOW SUBMARINEYELLOW SUBMARINE";
         let ciphertext = cipher.encrypt(cleartext.as_bytes());
-        let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
+        let new_cleartext = cipher.decrypt(ciphertext.as_slice());
 
-        assert_eq!(cleartext, new_cleartext);
+        assert_eq!(cleartext.as_bytes(), &new_cleartext[0..cleartext.len()]);
     }
 
     #[test]
@@ -226,9 +227,8 @@ mod tests {
         use crate::ciphers::AesBlockCipher;
         use crate::utils::random::get_rand_bytes;
 
-        let text = String::from_utf8(vec![65u8; 200]).unwrap();
-
         let block_size = 16;
+        let text = String::from_utf8(vec![65u8; 200]).unwrap();
 
         let mut rng = rand::thread_rng();
         let coinflip: i32 = rng.gen();
@@ -244,25 +244,38 @@ mod tests {
 
         let ciphertext = encryption_oracle(text.as_bytes(), cipher.clone());
 
-        let mut sum = 0;
+        let mut identical_block_count = 0;
 
         // Count identical blocks, becase ECB has those for the input we engineered
         for a in ciphertext.chunks(16) {
             for b in ciphertext.chunks(16) {
-                if hamming_distance(a, b) == 0 {
-                    sum += 1;
+                if a == b {
+                    identical_block_count += 1;
                 }
             }
         }
 
         // 50 Because it has some buffer
-        let detected = if sum > 50 { "ECB" } else { "CBC" };
+        let detected_cipher = if identical_block_count > 30 {
+            "ECB"
+        } else {
+            "CBC"
+        };
 
-        let name = match cipher {
+        let actual_cipher = match cipher {
             AesBlockCipher::CBC(c) => "CBC",
             AesBlockCipher::ECB(c) => "ECB",
         };
+        assert_eq!(actual_cipher, detected_cipher);
+    }
 
-        assert_eq!(name, detected);
+    #[test]
+    fn challenge12() {
+        let unknown_str = read_base64file_to_hex("statics/ch12.txt");
+        let known_str: Vec<u8> = Vec::new();
+
+        let key = "AAAAAAAAAAAAAAAA".as_bytes();
+
+        let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, 16));
     }
 }
