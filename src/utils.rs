@@ -162,7 +162,7 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
 pub fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
     let pad_char = (block_size - byte_slice.len() % block_size) as u8;
 
-    let pad_length = (block_size - (byte_slice.len() % block_size));
+    let pad_length = block_size - (byte_slice.len() % block_size);
 
     [byte_slice, vec![pad_char; pad_length].as_slice()].concat()
 }

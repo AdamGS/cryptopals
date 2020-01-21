@@ -13,6 +13,31 @@ pub enum AesBlockCipher<'a> {
     ECB(AesEcbCipher<'a>),
 }
 
+impl AesBlockCipher<'_> {
+    pub fn name(&self) -> &str {
+        match self {
+            AesBlockCipher::CBC(_) => "CBC",
+            AesBlockCipher::ECB(_) => "ECB",
+        }
+    }
+}
+
+impl<'e> Cipher for AesBlockCipher<'e> {
+    fn encrypt<'g>(&self, cleartext: &'g [u8]) -> Vec<u8> {
+        match self {
+            AesBlockCipher::CBC(c) => c.encrypt(cleartext),
+            AesBlockCipher::ECB(c) => c.encrypt(cleartext),
+        }
+    }
+
+    fn decrypt<'f>(&self, ciphertext: &'f [u8]) -> Vec<u8> {
+        match self {
+            AesBlockCipher::CBC(c) => c.decrypt(ciphertext),
+            AesBlockCipher::ECB(c) => c.decrypt(ciphertext),
+        }
+    }
+}
+
 pub trait Cipher {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
@@ -119,8 +144,6 @@ impl<'b> Cipher for AesCbcCipher<'b> {
                     fixed_xor(decrypted_block, ciphertext_blocks[index - 1].to_vec())
                 };
 
-                //println!("{}", String::from_utf8(xored_value.clone()).unwrap());
-
                 acc.append(xored_value.as_mut());
 
                 acc
@@ -157,10 +180,7 @@ pub fn encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
         16,
     );
 
-    match cipher {
-        AesBlockCipher::CBC(c) => c.encrypt(&padded),
-        AesBlockCipher::ECB(c) => c.encrypt(&padded),
-    }
+    cipher.encrypt(&padded)
 }
 
 pub mod breakers {

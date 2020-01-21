@@ -9,7 +9,9 @@ mod utils;
 mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
+    use crate::ciphers::{
+        encryption_oracle, repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher,
+    };
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, pkcs7_pad, rate_string,
@@ -255,27 +257,45 @@ mod tests {
             }
         }
 
-        // 50 Because it has some buffer
-        let detected_cipher = if identical_block_count > 30 {
+        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+        let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 2 {
             "ECB"
         } else {
             "CBC"
         };
 
-        let actual_cipher = match cipher {
-            AesBlockCipher::CBC(c) => "CBC",
-            AesBlockCipher::ECB(c) => "ECB",
-        };
-        assert_eq!(actual_cipher, detected_cipher);
+        assert_eq!(cipher.name(), detected_cipher);
     }
 
     #[test]
     fn challenge12() {
         let unknown_str = read_base64file_to_hex("statics/ch12.txt");
-        let known_str: Vec<u8> = Vec::new();
+        let key = "ABCDEFGHIJKLMNOP".as_bytes();
+        let block_size = 16;
 
-        let key = "AAAAAAAAAAAAAAAA".as_bytes();
+        let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, 16));
+        for i in 0..200 {
+            let known_str: Vec<u8> = vec![65u8; i];
+            let padded_text = pkcs7_pad(&[known_str, unknown_str.clone()].concat(), block_size);
+            let ciphertext = encryption_oracle(&padded_text, cipher);
+
+            let mut identical_block_count = 0;
+
+            for a in ciphertext.chunks(16) {
+                for b in ciphertext.chunks(16) {
+                    if a == b {
+                        identical_block_count += 1;
+                    }
+                }
+            }
+
+            // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+            let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 3 {
+                "ECB"
+            } else {
+                "CBC"
+            };
+        }
     }
 }
