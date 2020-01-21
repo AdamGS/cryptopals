@@ -168,7 +168,7 @@ pub fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
 }
 
 pub mod random {
-    use rand::{Rng, RngCore};
+    use rand::Rng;
     pub fn get_rand_bytes(length: usize) -> Vec<u8> {
         let mut rng = rand::thread_rng();
         (0..length).map(|_| rng.gen()).collect()

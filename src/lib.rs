@@ -67,7 +67,6 @@ mod tests {
 
         for line in file_lines {
             for key in hex_keys.to_owned() {
-                let ciphertext = string2hex(line);
                 let cleartext = single_byte_xor_cipher(&string2hex(line), key);
                 let cleartext_string = String::from_utf8(cleartext);
 

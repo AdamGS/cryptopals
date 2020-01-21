@@ -4,7 +4,6 @@ use crate::utils::random::get_rand_bytes;
 use aes::block_cipher_trait::generic_array::GenericArray;
 use aes::block_cipher_trait::BlockCipher;
 use aes::Aes128;
-use itertools::Itertools;
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy)]
