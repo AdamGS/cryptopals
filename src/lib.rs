@@ -79,30 +79,29 @@ mod tests {
             }
         }
 
-        let mut base = 0;
-        let mut fin_string = String::new();
+        let mut curr_score = 0;
+        let mut curr_string = String::new();
 
-        for (a, b) in score_map {
-            if b >= base {
-                base = b;
-                fin_string = a;
+        for (string, score) in score_map {
+            if score >= curr_score {
+                curr_score = score;
+                curr_string = string;
             }
         }
 
-        assert_eq!("Now that the party is jumping\n", fin_string);
+        assert_eq!("Now that the party is jumping\n", curr_string);
     }
 
     #[test]
     fn challenge5() {
-        let cleartext_string =
-            "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-
-        let key = "ICE".as_bytes().to_vec();
-        let r1_bytes = cleartext_string.as_bytes().to_vec();
-        let r1 = hex2string(repeating_key_xor_cipher(&r1_bytes, &key));
+        let key = "ICE".as_bytes();
+        let cleartext =
+            "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
+                .as_bytes();
+        let ciphertext = hex2string(repeating_key_xor_cipher(cleartext, key));
 
         assert_eq!(
-            r1,
+            ciphertext,
             "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f"
         );
     }
@@ -113,31 +112,34 @@ mod tests {
 
         let mut vec = Vec::new();
 
+        // For every keysize in the a likely range
         for keysize in 2..40 {
             let mut chunks = ciphertext.chunks(keysize);
-            let mut count = 0;
+            let mut num_of_pairs = 0;
             let mut dist = 0;
 
+            // We calculate the differense between the first keysize-sized block and the second
             while let (Some(f), Some(s)) = (chunks.next(), chunks.next()) {
                 dist += hamming_distance(f, s);
-                count += 1;
+                num_of_pairs += 1;
             }
 
-            let normalized_distance = (dist / count) / keysize;
+            // Average distance between two blocks, normalized by dividing by the keysize
+            let normalized_distance = (dist / num_of_pairs) / keysize;
 
             vec.push((normalized_distance, keysize));
         }
 
         vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let final_keysize = vec.iter().map(|(_, v)| *v).next().unwrap();
-        assert_eq!(final_keysize, 29);
+        let actual_keysize = vec.first().unwrap().1;
+        assert_eq!(actual_keysize, 29);
 
-        let mut strings = vec![Vec::new(); final_keysize];
-        let mut key = vec![0u8; final_keysize];
+        let mut strings = vec![Vec::new(); actual_keysize];
+        let mut key = vec![0u8; actual_keysize];
 
         for (i, c) in ciphertext.iter().enumerate() {
-            strings[i % final_keysize].push(*c);
+            strings[i % actual_keysize].push(*c);
         }
 
         for (i, s) in strings.iter().enumerate() {
@@ -145,9 +147,10 @@ mod tests {
         }
 
         let f = repeating_key_xor_cipher(ciphertext.as_slice(), key.as_slice());
-
         let s = String::from_utf8(f).unwrap();
         let s_key = String::from_utf8(key).unwrap();
+
+        assert_eq!(s_key, "Terminator X: Bring the noise");
     }
 
     #[test]

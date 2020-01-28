@@ -6,6 +6,11 @@ use aes::block_cipher_trait::BlockCipher;
 use aes::Aes128;
 use rand::Rng;
 
+pub trait Cipher {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum AesBlockCipher<'a> {
     CBC(AesCbcCipher<'a>),
@@ -37,57 +42,11 @@ impl<'e> Cipher for AesBlockCipher<'e> {
     }
 }
 
-pub trait Cipher {
-    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
-    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct AesCbcCipher<'b> {
     key: &'b [u8],
     block_size: usize,
     iv: &'b [u8],
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct AesEcbCipher<'a> {
-    key: &'a [u8],
-    block_size: usize,
-}
-
-impl<'c> AesEcbCipher<'c> {
-    pub fn new(key: &'c [u8], block_size: usize) -> Self {
-        assert_eq!(key.len(), block_size);
-        AesEcbCipher { key, block_size }
-    }
-}
-
-impl<'a> Cipher for AesEcbCipher<'a> {
-    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
-        let cipher = Aes128::new(GenericArray::from_slice(self.key));
-        let mut v = Vec::new();
-
-        for c in cleartext.chunks(self.block_size) {
-            let mut block = GenericArray::from_slice(c).clone();
-            cipher.encrypt_block(&mut block);
-            v.append(&mut block.to_vec());
-        }
-
-        v
-    }
-
-    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
-        let cipher = Aes128::new(GenericArray::from_slice(self.key));
-        let mut v = Vec::new();
-
-        for c in ciphertext.chunks(self.block_size) {
-            let mut block = GenericArray::from_slice(&c).clone();
-            cipher.decrypt_block(&mut block);
-            v.append(&mut block.to_vec());
-        }
-
-        v
-    }
 }
 
 impl<'b> AesCbcCipher<'b> {
@@ -147,6 +106,47 @@ impl<'b> Cipher for AesCbcCipher<'b> {
 
                 acc
             })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AesEcbCipher<'a> {
+    key: &'a [u8],
+    block_size: usize,
+}
+
+impl<'c> AesEcbCipher<'c> {
+    pub fn new(key: &'c [u8], block_size: usize) -> Self {
+        assert_eq!(key.len(), block_size);
+        AesEcbCipher { key, block_size }
+    }
+}
+
+impl<'a> Cipher for AesEcbCipher<'a> {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
+        let cipher = Aes128::new(GenericArray::from_slice(self.key));
+        let mut v = Vec::new();
+
+        for c in cleartext.chunks(self.block_size) {
+            let mut block = GenericArray::from_slice(c).clone();
+            cipher.encrypt_block(&mut block);
+            v.append(&mut block.to_vec());
+        }
+
+        v
+    }
+
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+        let cipher = Aes128::new(GenericArray::from_slice(self.key));
+        let mut v = Vec::new();
+
+        for c in ciphertext.chunks(self.block_size) {
+            let mut block = GenericArray::from_slice(&c).clone();
+            cipher.decrypt_block(&mut block);
+            v.append(&mut block.to_vec());
+        }
+
+        v
     }
 }
 
