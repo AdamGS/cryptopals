@@ -295,7 +295,6 @@ mod tests {
         //Now we detected it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
         let ciphertext = unknown_string_padded_oracle(&known_str, cipher);
-
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -318,18 +317,33 @@ mod tests {
         assert_eq!(detected_cipher, "ECB");
 
         let mut unknown_string = String::new();
-        let base_ciphertext =
-            unknown_string_padded_oracle(&vec![65u8; guessed_block_size - 1], cipher);
+        let final_result = read_base64file_to_hex("statics/ch12.txt");
 
-        for c in all_ascii_chars() {
-            let mut input = vec![65u8; guessed_block_size - 1];
-            input.push(c as u8);
-            let ciphertext = unknown_string_padded_oracle(&input, cipher);
-            if ciphertext[0..guessed_block_size] == base_ciphertext[0..guessed_block_size] {
-                unknown_string.push(c);
+        for i in 1..final_result.len() + 1 {
+            let end_block_idx = (1 + (i / 16)) * guessed_block_size;
+
+            let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
+            let base_ciphertext =
+                unknown_string_padded_oracle(&vec![65u8; end_block_idx - i], cipher);
+
+            for c in all_ascii_chars() {
+                let mut input = vec![65u8; end_block_idx - i];
+
+                for byte in unknown_string.bytes() {
+                    input.push(byte as u8);
+                }
+
+                input.push(c as u8);
+                let ciphertext = unknown_string_padded_oracle(&input, cipher);
+
+                if ciphertext[0..end_block_idx] == base_ciphertext[0..end_block_idx] {
+                    hashmap.insert(ciphertext[0..end_block_idx].to_vec(), c);
+                }
             }
+
+            unknown_string.push(*hashmap.get(&base_ciphertext[0..end_block_idx]).unwrap());
         }
 
-        println!("And the unknown-string is...\n{}\n", unknown_string);
+        assert_eq!(final_result, unknown_string.into_bytes());
     }
 }
