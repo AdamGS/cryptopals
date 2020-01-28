@@ -317,31 +317,40 @@ mod tests {
         assert_eq!(detected_cipher, "ECB");
 
         let mut unknown_string = String::new();
+        //For testing purposes later, and also because it makes the top loop prettier.
         let final_result = read_base64file_to_hex("statics/ch12.txt");
 
+        // i is basically always unknown_string.len() + 1 at the start of the loop
         for i in 1..final_result.len() + 1 {
-            let end_block_idx = (1 + (i / 16)) * guessed_block_size;
+            // Length of the prefix padding, block_size * the block count for the block we are dealing
+            // with within the unknown-string. We later subtract i because that's where the new guesses 'go'
+            // with the already known characters
+            let block_count = (1 + (i / 16)) * guessed_block_size;
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
+            //This is a known prefix
             let base_ciphertext =
-                unknown_string_padded_oracle(&vec![65u8; end_block_idx - i], cipher);
+                unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
 
             for c in all_ascii_chars() {
-                let mut input = vec![65u8; end_block_idx - i];
+                let mut input = vec![65u8; block_count - i];
 
+                // Push all the known characters
                 for byte in unknown_string.bytes() {
                     input.push(byte as u8);
                 }
 
+                // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
                 let ciphertext = unknown_string_padded_oracle(&input, cipher);
 
-                if ciphertext[0..end_block_idx] == base_ciphertext[0..end_block_idx] {
-                    hashmap.insert(ciphertext[0..end_block_idx].to_vec(), c);
-                }
+                //We put the precomputed ciphertext in here
+                hashmap.insert(ciphertext[0..block_count].to_vec(), c);
             }
 
-            unknown_string.push(*hashmap.get(&base_ciphertext[0..end_block_idx]).unwrap());
+            //From all of the ciphertexts we just computed, we take the guess that shares the same
+            //first block_count bytes with our base_ciphertext, and then unto the next character.
+            unknown_string.push(*hashmap.get(&base_ciphertext[0..block_count]).unwrap());
         }
 
         assert_eq!(final_result, unknown_string.into_bytes());
