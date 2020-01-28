@@ -1,4 +1,4 @@
-use crate::utils::{fixed_xor, pkcs7_pad};
+use crate::utils::{fixed_xor, pkcs7_pad, read_base64file_to_hex};
 
 use crate::utils::random::get_rand_bytes;
 use aes::block_cipher_trait::generic_array::GenericArray;
@@ -165,7 +165,7 @@ pub fn repeating_key_xor_cipher(ciphertext: &[u8], key: &[u8]) -> Vec<u8> {
     r
 }
 
-pub fn encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
+pub fn random_padded_encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
     let mut rng = rand::thread_rng();
     let pre_pad = rng.gen_range(5, 11);
     let post_pad = rng.gen_range(5, 11);
@@ -178,6 +178,13 @@ pub fn encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
         .concat(),
         16,
     );
+
+    cipher.encrypt(&padded)
+}
+
+pub fn unknown_string_padded_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
+    let unknown_str = read_base64file_to_hex("statics/ch12.txt");
+    let padded = pkcs7_pad(&[cleartext, &unknown_str].concat(), 16);
 
     cipher.encrypt(&padded)
 }

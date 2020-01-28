@@ -10,7 +10,8 @@ mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{
-        encryption_oracle, repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher,
+        random_padded_encryption_oracle, repeating_key_xor_cipher, single_byte_xor_cipher,
+        unknown_string_padded_oracle, AesBlockCipher,
     };
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
@@ -227,7 +228,7 @@ mod tests {
 
     #[test]
     fn challenge11() {
-        use crate::ciphers::encryption_oracle;
+        use crate::ciphers::random_padded_encryption_oracle;
         use crate::ciphers::AesBlockCipher;
         use crate::utils::random::get_rand_bytes;
 
@@ -246,7 +247,7 @@ mod tests {
             }
         };
 
-        let ciphertext = encryption_oracle(text.as_bytes(), cipher.clone());
+        let ciphertext = random_padded_encryption_oracle(text.as_bytes(), cipher.clone());
 
         let mut identical_block_count = 0;
 
@@ -271,33 +272,64 @@ mod tests {
 
     #[test]
     fn challenge12() {
-        let unknown_str = read_base64file_to_hex("statics/ch12.txt");
         let key = "ABCDEFGHIJKLMNOP".as_bytes();
         let block_size = 16;
+        let mut guessed_block_size = 0;
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        for i in 0..200 {
-            let known_str: Vec<u8> = vec![65u8; i];
-            let padded_text = pkcs7_pad(&[known_str, unknown_str.clone()].concat(), block_size);
-            let ciphertext = encryption_oracle(&padded_text, cipher);
+        let baseline = unknown_string_padded_oracle(&[65u8], cipher).len();
 
-            let mut identical_block_count = 0;
+        //Let's figure out the block size!
+        for l in 2..40 {
+            let dummy_cleartext = vec![65u8; l];
+            let ciphertext = unknown_string_padded_oracle(&dummy_cleartext, cipher);
+            if ciphertext.len() != baseline {
+                guessed_block_size = ciphertext.len() - baseline;
+                break;
+            }
+        }
 
-            for a in ciphertext.chunks(16) {
-                for b in ciphertext.chunks(16) {
-                    if a == b {
-                        identical_block_count += 1;
-                    }
+        assert_eq!(guessed_block_size, 16);
+
+        //Now we detected it's AES-ECB (Using the method from the 11th challenge)
+        let known_str: Vec<u8> = vec![65u8; 200];
+        let ciphertext = unknown_string_padded_oracle(&known_str, cipher);
+
+        let mut identical_block_count = 0;
+
+        for a in ciphertext.chunks(16) {
+            for b in ciphertext.chunks(16) {
+                if a == b {
+                    identical_block_count += 1;
                 }
             }
-
-            // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
-            let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 3 {
-                "ECB"
-            } else {
-                "CBC"
-            };
         }
+
+        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+        let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 3 {
+            "ECB"
+        } else {
+            "CBC"
+        };
+
+        // Tests to make sure I don't break anything
+        assert_eq!(detected_cipher, cipher.name());
+        assert_eq!(detected_cipher, "ECB");
+
+        let mut unknown_string = String::new();
+        let base_ciphertext =
+            unknown_string_padded_oracle(&vec![65u8; guessed_block_size - 1], cipher);
+
+        for c in all_ascii_chars() {
+            let mut input = vec![65u8; guessed_block_size - 1];
+            input.push(c as u8);
+            let ciphertext = unknown_string_padded_oracle(&input, cipher);
+            if ciphertext[0..guessed_block_size] == base_ciphertext[0..guessed_block_size] {
+                unknown_string.push(c);
+            }
+        }
+
+        println!("And the unknown-string is...\n{}\n", unknown_string);
     }
 }
