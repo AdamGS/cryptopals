@@ -13,6 +13,8 @@ mod tests {
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::oracles::{random_padded_encryption_oracle, unknown_string_padded_oracle};
+    use crate::utils::cookie::{parse_kv, profile_for};
+    use crate::utils::random::get_rand_bytes;
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
         ByteSlice,
@@ -351,5 +353,27 @@ mod tests {
         }
 
         assert_eq!(final_result, unknown_string.into_bytes());
+    }
+
+    #[test]
+    fn challenge13() {
+        let key = get_rand_bytes(16);
+        let cipher = AesBlockCipher::ECB(AesEcbCipher::new(&key, 16));
+
+        let cleartext_profile = profile_for("user@user.com").as_bytes().pad(16);
+        let ciphertext = cipher.encrypt(&cleartext_profile);
+        let admin_profile = profile_for("user@user.admin").as_bytes().pad(16);
+        let admin_ciphertext = cipher.encrypt(&admin_profile);
+
+        let manipulated = [
+            ciphertext[0..32].to_vec(),
+            admin_ciphertext[16..32].to_vec(),
+        ]
+        .concat()
+        .pad(16);
+
+        let manipulated_cleartext =
+            String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
+        assert_eq!(parse_kv(manipulated_cleartext.as_str())["role"], "admin");
     }
 }
