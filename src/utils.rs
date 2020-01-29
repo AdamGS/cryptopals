@@ -1,6 +1,16 @@
 use crate::bitarray::BitArray;
 use std::collections::HashMap;
 
+pub trait ByteSlice {
+    fn pad(&self, block_size: usize) -> Vec<u8>;
+}
+
+impl ByteSlice for [u8] {
+    fn pad(&self, block_size: usize) -> Vec<u8> {
+        pkcs7_pad(self, block_size)
+    }
+}
+
 pub fn euclidean_distance(vec1: Vec<f64>, vec2: Vec<f64>) -> f64 {
     assert_eq!(vec1.len(), vec2.len());
     let mut sum = 0f64;
@@ -159,9 +169,8 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
     base64tohex(modified_string.as_str())
 }
 
-pub fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
+fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
     let pad_char = (block_size - byte_slice.len() % block_size) as u8;
-
     let pad_length = block_size - (byte_slice.len() % block_size);
 
     [byte_slice, vec![pad_char; pad_length].as_slice()].concat()
@@ -169,6 +178,7 @@ pub fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
 
 pub mod random {
     use rand::Rng;
+
     pub fn get_rand_bytes(length: usize) -> Vec<u8> {
         let mut rng = rand::thread_rng();
         (0..length).map(|_| rng.gen()).collect()
@@ -187,7 +197,7 @@ mod tests {
 
     #[test]
     fn no_padding_needed_test() {
-        let padded = pkcs7_pad("YELLOW SUBMARINE".as_bytes(), 16);
+        let padded = "YELLOW SUBMARINE".as_bytes().pad(16);
         assert_eq!(
             "YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10",
             String::from_utf8(padded).unwrap()

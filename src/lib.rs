@@ -15,8 +15,8 @@ mod tests {
     };
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::utils::{
-        all_ascii_chars, fixed_xor, hamming_distance, pkcs7_pad, rate_string,
-        read_base64file_to_hex,
+        all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
+        ByteSlice,
     };
     use rand::Rng;
     use std::any::Any;
@@ -204,9 +204,8 @@ mod tests {
 
     #[test]
     fn challenge9() {
-        use crate::utils::pkcs7_pad;
         assert_eq!(
-            String::from_utf8(pkcs7_pad("YELLOW_SUBMARINE".as_bytes(), 20)).unwrap(),
+            String::from_utf8("YELLOW_SUBMARINE".as_bytes().pad(20)).unwrap(),
             "YELLOW_SUBMARINE\x04\x04\x04\x04"
         )
     }

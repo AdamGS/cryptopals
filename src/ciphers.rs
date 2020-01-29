@@ -1,4 +1,4 @@
-use crate::utils::{fixed_xor, pkcs7_pad, read_base64file_to_hex};
+use crate::utils::{fixed_xor, read_base64file_to_hex, ByteSlice};
 
 use crate::utils::random::get_rand_bytes;
 use aes::block_cipher_trait::generic_array::GenericArray;
@@ -61,7 +61,7 @@ impl<'b> AesCbcCipher<'b> {
 
 impl<'b> Cipher for AesCbcCipher<'b> {
     fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
-        let padded_text = pkcs7_pad(cleartext, self.block_size);
+        let padded_text = cleartext.pad(self.block_size);
         let ecb = AesEcbCipher::new(self.key, self.block_size);
 
         padded_text
@@ -169,22 +169,20 @@ pub fn random_padded_encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher)
     let mut rng = rand::thread_rng();
     let pre_pad = rng.gen_range(5, 11);
     let post_pad = rng.gen_range(5, 11);
-    let padded = pkcs7_pad(
-        &[
-            get_rand_bytes(pre_pad),
-            cleartext.to_vec(),
-            get_rand_bytes(post_pad),
-        ]
-        .concat(),
-        16,
-    );
+    let padded = &[
+        get_rand_bytes(pre_pad),
+        cleartext.to_vec(),
+        get_rand_bytes(post_pad),
+    ]
+    .concat()
+    .pad(16);
 
     cipher.encrypt(&padded)
 }
 
 pub fn unknown_string_padded_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
     let unknown_str = read_base64file_to_hex("statics/ch12.txt");
-    let padded = pkcs7_pad(&[cleartext, &unknown_str].concat(), 16);
+    let padded = &[cleartext, &unknown_str].concat().pad(16);
 
     cipher.encrypt(&padded)
 }
