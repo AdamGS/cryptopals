@@ -185,9 +185,43 @@ pub mod random {
     }
 }
 
+pub mod cookie {
+    use std::collections::HashMap;
+
+    fn escape_control_chars(input: &str) -> String {
+        input.replace('&', "%26").replace('=', "%3D")
+    }
+
+    pub fn parse_kv(args: &str) -> HashMap<&str, &str> {
+        let mut hm = HashMap::new();
+        for sub in args.split('&') {
+            let tup: Vec<&str> = sub.split('=').collect();
+            hm.insert(tup[0], tup[1]);
+        }
+
+        hm
+    }
+
+    pub fn encode_kv(hm: HashMap<&str, &str>) -> String {
+        let email = escape_control_chars(*hm.get("email").unwrap());
+        let uid = escape_control_chars(*hm.get("uid").unwrap());
+        let role = escape_control_chars(*hm.get("role").unwrap());
+        format!("email={}&uid={}&role={}", email, uid, role)
+    }
+
+    pub fn profile_for(email: &str) -> String {
+        let mut hm = HashMap::new();
+        hm.insert("uid", "10");
+        hm.insert("role", "user");
+        hm.insert("email", email);
+        encode_kv(hm)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::cookie::{parse_kv, profile_for};
 
     #[test]
     fn hamming_distance_test() {
@@ -201,6 +235,14 @@ mod tests {
         assert_eq!(
             "YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10",
             String::from_utf8(padded).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_cookie_parsing() {
+        assert_eq!(
+            profile_for("foo@bar.com"),
+            "email=foo@bar.com&uid=10&role=user"
         );
     }
 }

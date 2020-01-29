@@ -3,17 +3,16 @@ extern crate aes;
 mod base64;
 mod bitarray;
 mod ciphers;
+mod oracles;
 mod utils;
 
 #[cfg(test)]
 mod tests {
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{
-        random_padded_encryption_oracle, repeating_key_xor_cipher, single_byte_xor_cipher,
-        unknown_string_padded_oracle, AesBlockCipher,
-    };
+    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
+    use crate::oracles::{random_padded_encryption_oracle, unknown_string_padded_oracle};
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
         ByteSlice,
@@ -227,7 +226,6 @@ mod tests {
 
     #[test]
     fn challenge11() {
-        use crate::ciphers::random_padded_encryption_oracle;
         use crate::ciphers::AesBlockCipher;
         use crate::utils::random::get_rand_bytes;
 
