@@ -1,8 +1,9 @@
+use rand::Rng;
+
 use crate::ciphers::{AesBlockCipher, Cipher};
 use crate::utils::random::get_rand_bytes;
 use crate::utils::read_base64file_to_hex;
 use crate::utils::ByteSlice;
-use rand::Rng;
 
 pub fn random_padded_encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
     let mut rng = rand::thread_rng();

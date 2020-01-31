@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use crate::bitarray::BitArray;
 use crate::utils::{char_to_hex, hex_to_char};
-use std::collections::HashMap;
 
 //TODO: Replace with macro
 const BASE64_TABLE: [char; 64] = [

@@ -1,5 +1,6 @@
-use crate::bitarray::BitArray;
 use std::collections::HashMap;
+
+use crate::bitarray::BitArray;
 
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
@@ -220,8 +221,9 @@ pub mod cookie {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::utils::cookie::{parse_kv, profile_for};
+
+    use super::*;
 
     #[test]
     fn hamming_distance_test() {

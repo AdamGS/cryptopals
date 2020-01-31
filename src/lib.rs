@@ -8,21 +8,27 @@ mod utils;
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+    use std::fs::File;
+    use std::io::Read;
+    use std::ops::{Add, Deref};
+
+    use rand::Rng;
+
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
-    use crate::oracles::{random_padded_encryption_oracle, unknown_string_padded_oracle};
+    use crate::oracles::{
+        prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
+        unknown_string_padded_oracle,
+    };
     use crate::utils::cookie::{parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{
         all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
         ByteSlice,
     };
-    use rand::Rng;
-    use std::any::Any;
-    use std::collections::HashMap;
-    use std::ops::Deref;
 
     #[test]
     fn challenge1() {
@@ -56,9 +62,6 @@ mod tests {
 
     #[test]
     fn challenge4() {
-        use std::fs::File;
-        use std::io::Read;
-
         let mut score_map = HashMap::new();
         let hex_keys: Vec<u8> = all_ascii_chars().iter().map(|b| *b as u8).collect();
 
@@ -111,7 +114,6 @@ mod tests {
     #[test]
     fn challenge6() {
         let ciphertext = read_base64file_to_hex("statics/set1ch6.txt");
-
         let mut vec = Vec::new();
 
         // For every keysize in the a likely range
@@ -157,12 +159,7 @@ mod tests {
 
     #[test]
     fn challenge7() {
-        use std::fs;
-        use std::io::Read;
-        use std::ops::Add;
-
         let ciphertext = read_base64file_to_hex("statics/set1ch7.txt");
-
         let key = "YELLOW SUBMARINE";
         let cipher = AesEcbCipher::new(key.as_bytes(), 16);
 
@@ -173,16 +170,12 @@ mod tests {
 
     #[test]
     fn challenge8() {
-        use std::fs::File;
-        use std::io::Read;
-
         let mut file = File::open("statics/ch8.txt").unwrap();
         let mut s = String::new();
         file.read_to_string(&mut s).expect("Unable to read file");
         let file_lines = s.lines().map(|l| base64tohex(l));
 
         let mut result_map: HashMap<usize, usize> = Default::default();
-
         let block_size = 16;
 
         // Count how many block of block_size repeat within each line,
@@ -213,7 +206,6 @@ mod tests {
 
     #[test]
     fn challenge10() {
-        use crate::ciphers::AesCbcCipher;
         let cipher = AesCbcCipher::new(
             "AAAAAAAAAAAAAAAA".as_bytes(),
             16,
@@ -228,9 +220,6 @@ mod tests {
 
     #[test]
     fn challenge11() {
-        use crate::ciphers::AesBlockCipher;
-        use crate::utils::random::get_rand_bytes;
-
         let block_size = 16;
         let text = String::from_utf8(vec![65u8; 200]).unwrap();
 
@@ -375,5 +364,105 @@ mod tests {
         let manipulated_cleartext =
             String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
         assert_eq!(parse_kv(manipulated_cleartext.as_str())["role"], "admin");
+    }
+
+    #[test]
+    fn challenge14() {
+        let key = "ABCDEFGHIJKLMNOP".as_bytes();
+        let block_size = 16;
+        let mut guessed_block_size = 0;
+
+        let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
+
+        let baseline = prefix_unknown_string_padded_oracle(&[65u8], cipher).len();
+
+        //Let's figure out the block size!
+        for l in 2..40 {
+            let dummy_cleartext = vec![65u8; l];
+            let ciphertext = prefix_unknown_string_padded_oracle(&dummy_cleartext, cipher);
+            if ciphertext.len() != baseline {
+                guessed_block_size = ciphertext.len() - baseline;
+                break;
+            }
+        }
+
+        assert_eq!(guessed_block_size, 16);
+
+        //Now we detected it's AES-ECB (Using the method from the 11th challenge)
+        let known_str: Vec<u8> = vec![65u8; 200];
+        let ciphertext = prefix_unknown_string_padded_oracle(&known_str, cipher);
+        let mut identical_block_count = 0;
+
+        for a in ciphertext.chunks(16) {
+            for b in ciphertext.chunks(16) {
+                if a == b {
+                    identical_block_count += 1;
+                }
+            }
+        }
+
+        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+        let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 3 {
+            "ECB"
+        } else {
+            "CBC"
+        };
+
+        // Tests to make sure I don't break anything
+        assert_eq!(detected_cipher, cipher.name());
+        assert_eq!(detected_cipher, "ECB");
+
+        let mut unknown_string = String::new();
+        //For testing purposes later, and also because it makes the top loop prettier.
+        let final_result = read_base64file_to_hex("statics/ch12.txt");
+
+        // i is basically always (unknown_string.len() + 1) at the start of the loop
+        for i in 1..final_result.len() + 1 {
+            // Length of the prefix padding, block_size * the block count for the block we are dealing
+            // with within the unknown-string. We later subtract i because that's where the new guesses 'go'
+            // with the already known characters
+            let block_count = (2 + (i / 16)) * guessed_block_size;
+
+            let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
+            //This is a known prefix
+            let base_ciphertext =
+                prefix_unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
+
+            for c in all_ascii_chars() {
+                let mut input: Vec<u8> = vec![c as u8; block_count - i];
+
+                // Push all the known characters
+                for byte in unknown_string.bytes() {
+                    input.push(byte as u8);
+                }
+
+                // That's our current "guess", and we compute the ciphertext for it.
+                input.push(c as u8);
+                let ciphertext = prefix_unknown_string_padded_oracle(&input, cipher);
+
+                //We put the precomputed ciphertext in here
+                hashmap.insert(ciphertext[32..block_count].to_vec(), c);
+            }
+
+            //From all of the ciphertexts we just computed, we take the guess that shares the same
+            //first block_count bytes with our base_ciphertext, and then unto the next character.
+            let new_char = hashmap.get(&base_ciphertext[32..block_count]);
+            match new_char {
+                None => {}
+                Some(letter) => {
+                    if letter.is_alphanumeric()
+                        || letter.is_ascii_punctuation()
+                        || letter.is_ascii_whitespace()
+                    {
+                        unknown_string.push(*letter);
+                    }
+                }
+            }
+            //unknown_string.push(*hashmap.get(&base_ciphertext[0..block_count]).unwrap());
+        }
+
+        println!("The unknown string is: {}", unknown_string);
+
+        assert_eq!(final_result, unknown_string.into_bytes());
     }
 }
