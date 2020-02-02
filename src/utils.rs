@@ -4,11 +4,21 @@ use crate::bitarray::BitArray;
 
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
+    fn validate_pad(&self) -> Result<Vec<u8>, ()>;
 }
 
 impl ByteSlice for [u8] {
     fn pad(&self, block_size: usize) -> Vec<u8> {
         pkcs7_pad(self, block_size)
+    }
+
+    fn validate_pad(&self) -> Result<Vec<u8>, ()> {
+        let last_byte = *self.last().unwrap() as usize;
+        if self[self.len() - last_byte..self.len()].to_vec() == vec![last_byte as u8; last_byte] {
+            Ok(self[0..self.len() - last_byte].to_vec())
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -242,9 +252,6 @@ mod tests {
 
     #[test]
     fn test_cookie_parsing() {
-        assert_eq!(
-            profile_for("foo@bar.com"),
-            "email=foo@bar.com&uid=10&role=user"
-        );
+        assert_eq!(profile_for("foo@bar.com"), "email=foo@bar.com&uid=10&role=user");
     }
 }

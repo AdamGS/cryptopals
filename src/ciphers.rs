@@ -51,11 +51,7 @@ pub struct AesCbcCipher<'b> {
 
 impl<'b> AesCbcCipher<'b> {
     pub fn new(key: &'b [u8], block_size: usize, iv: &'b [u8]) -> Self {
-        AesCbcCipher {
-            key,
-            block_size,
-            iv,
-        }
+        AesCbcCipher { key, block_size, iv }
     }
 }
 
@@ -87,25 +83,23 @@ impl<'b> Cipher for AesCbcCipher<'b> {
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
         let ecb = AesEcbCipher::new(self.key, self.block_size);
 
-        ciphertext
-            .to_vec()
-            .chunks(self.block_size)
-            .enumerate()
-            .fold(Vec::new(), |mut acc: Vec<u8>, (index, curr_block)| {
+        ciphertext.to_vec().chunks(self.block_size).enumerate().fold(
+            Vec::new(),
+            |mut acc: Vec<u8>, (index, curr_block)| {
                 let decrypted_block = ecb.decrypt(curr_block);
 
                 let mut xored_value = if acc.is_empty() {
                     fixed_xor(decrypted_block, self.iv.to_vec())
                 } else {
-                    let ciphertext_blocks: Vec<&[u8]> =
-                        ciphertext.chunks(self.block_size).collect();
+                    let ciphertext_blocks: Vec<&[u8]> = ciphertext.chunks(self.block_size).collect();
                     fixed_xor(decrypted_block, ciphertext_blocks[index - 1].to_vec())
                 };
 
                 acc.append(xored_value.as_mut());
 
                 acc
-            })
+            },
+        )
     }
 }
 

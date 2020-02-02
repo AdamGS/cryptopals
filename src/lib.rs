@@ -11,7 +11,6 @@ mod tests {
     use std::collections::HashMap;
     use std::fs::File;
     use std::io::Read;
-    use std::ops::{Add, Deref};
 
     use rand::Rng;
 
@@ -20,19 +19,17 @@ mod tests {
     use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
     use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
     use crate::oracles::{
-        prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
-        unknown_string_padded_oracle,
+        prefix_unknown_string_padded_oracle, random_padded_encryption_oracle, unknown_string_padded_oracle,
     };
     use crate::utils::cookie::{parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
-    use crate::utils::{
-        all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex,
-        ByteSlice,
-    };
+    use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
+    use itertools::Itertools;
 
     #[test]
     fn challenge1() {
-        let base_string = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
+        let base_string =
+            "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d";
         let base64_output = "SSdtIGtpbGxpbmcgeW91ciBicmFpbiBsaWtlIGEgcG9pc29ub3VzIG11c2hyb29t";
         let hex_string = string2hex(base_string);
         assert_eq!(base64_output, hex2base64(hex_string));
@@ -51,8 +48,7 @@ mod tests {
 
     #[test]
     fn challenge3() {
-        let ciphertext =
-            string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
+        let ciphertext = string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 
         let key = break_single_xor_cipher(ciphertext.as_slice());
         let fin_string = String::from_utf8(single_byte_xor_cipher(&ciphertext, key)).unwrap();
@@ -100,9 +96,7 @@ mod tests {
     #[test]
     fn challenge5() {
         let key = "ICE".as_bytes();
-        let cleartext =
-            "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
-                .as_bytes();
+        let cleartext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".as_bytes();
         let ciphertext = hex2string(repeating_key_xor_cipher(cleartext, key));
 
         assert_eq!(
@@ -230,9 +224,7 @@ mod tests {
 
         let cipher: AesBlockCipher = match coinflip % 2 == 0 {
             true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_ref(), block_size)),
-            false => {
-                AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), block_size, iv.as_slice()))
-            }
+            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), block_size, iv.as_slice())),
         };
 
         let ciphertext = random_padded_encryption_oracle(text.as_bytes(), cipher.clone());
@@ -317,8 +309,7 @@ mod tests {
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
             //This is a known prefix
-            let base_ciphertext =
-                unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
+            let base_ciphertext = unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
 
             for c in all_ascii_chars() {
                 let mut input = vec![65u8; block_count - i];
@@ -354,32 +345,31 @@ mod tests {
         let admin_profile = profile_for("user@user.admin").as_bytes().pad(16);
         let admin_ciphertext = cipher.encrypt(&admin_profile);
 
-        let manipulated = [
-            ciphertext[0..32].to_vec(),
-            admin_ciphertext[16..32].to_vec(),
-        ]
-        .concat()
-        .pad(16);
+        let manipulated = [ciphertext[0..32].to_vec(), admin_ciphertext[16..32].to_vec()]
+            .concat()
+            .pad(16);
 
-        let manipulated_cleartext =
-            String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
+        let manipulated_cleartext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
         assert_eq!(parse_kv(manipulated_cleartext.as_str())["role"], "admin");
     }
 
     #[test]
     fn challenge14() {
         let key = "ABCDEFGHIJKLMNOP".as_bytes();
+        let mut rng = rand::thread_rng();
+        let prefix_length = rng.gen_range(0, 16);
+        let prefix = get_rand_bytes(prefix_length);
         let block_size = 16;
         let mut guessed_block_size = 0;
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = prefix_unknown_string_padded_oracle(&[65u8], cipher).len();
+        let baseline = prefix_unknown_string_padded_oracle(&prefix, &[65u8], cipher).len();
 
         //Let's figure out the block size!
         for l in 2..40 {
             let dummy_cleartext = vec![65u8; l];
-            let ciphertext = prefix_unknown_string_padded_oracle(&dummy_cleartext, cipher);
+            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &dummy_cleartext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -390,7 +380,7 @@ mod tests {
 
         //Now we detected it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
-        let ciphertext = prefix_unknown_string_padded_oracle(&known_str, cipher);
+        let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &known_str, cipher);
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -412,24 +402,43 @@ mod tests {
         assert_eq!(detected_cipher, cipher.name());
         assert_eq!(detected_cipher, "ECB");
 
+        //We have to know the length of the prefix
+        let mut guessed_prefix_length: usize = 0;
+        let mut prev_block: Vec<u8> = Default::default();
+
+        // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
+        for i in 1..17 {
+            let cipher = prefix_unknown_string_padded_oracle(&prefix, &vec![65u8; i], cipher);
+
+            // If we filled the block ("overpadded" it), it will look the same as the previous 16 bytes.
+            if cipher[0..16].to_vec() == prev_block {
+                guessed_prefix_length = guessed_block_size - i + 1;
+                break;
+            }
+
+            prev_block = cipher[0..16].to_vec();
+        }
+
+        assert_eq!(guessed_prefix_length, prefix_length);
+
         let mut unknown_string = String::new();
         //For testing purposes later, and also because it makes the top loop prettier.
         let final_result = read_base64file_to_hex("statics/ch12.txt");
 
-        // i is basically always (unknown_string.len() + 1) at the start of the loop
+        // This part is very similar to challenge
         for i in 1..final_result.len() + 1 {
-            // Length of the prefix padding, block_size * the block count for the block we are dealing
-            // with within the unknown-string. We later subtract i because that's where the new guesses 'go'
-            // with the already known characters
-            let block_count = (2 + (i / 16)) * guessed_block_size;
+            let block_count = (1 + (i / 16)) * guessed_block_size;
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
             //This is a known prefix
-            let base_ciphertext =
-                prefix_unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
+            let base_ciphertext = prefix_unknown_string_padded_oracle(
+                &prefix,
+                &vec![65u8; block_count - i - guessed_prefix_length],
+                cipher,
+            );
 
             for c in all_ascii_chars() {
-                let mut input: Vec<u8> = vec![c as u8; block_count - i];
+                let mut input = vec![65u8; block_count - i - guessed_prefix_length];
 
                 // Push all the known characters
                 for byte in unknown_string.bytes() {
@@ -438,31 +447,29 @@ mod tests {
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
-                let ciphertext = prefix_unknown_string_padded_oracle(&input, cipher);
+                let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &input, cipher);
 
                 //We put the precomputed ciphertext in here
-                hashmap.insert(ciphertext[32..block_count].to_vec(), c);
+                hashmap.insert(ciphertext[0..block_count].to_vec(), c);
             }
 
             //From all of the ciphertexts we just computed, we take the guess that shares the same
-            //first block_count bytes with our base_ciphertext, and then unto the next character.
-            let new_char = hashmap.get(&base_ciphertext[32..block_count]);
-            match new_char {
-                None => {}
-                Some(letter) => {
-                    if letter.is_alphanumeric()
-                        || letter.is_ascii_punctuation()
-                        || letter.is_ascii_whitespace()
-                    {
-                        unknown_string.push(*letter);
-                    }
-                }
-            }
-            //unknown_string.push(*hashmap.get(&base_ciphertext[0..block_count]).unwrap());
+            //first block_count bytes with our base_ciphertext, and then unto the next character.r
+            unknown_string.push(*hashmap.get(&base_ciphertext[0..block_count]).unwrap());
         }
 
-        println!("The unknown string is: {}", unknown_string);
-
         assert_eq!(final_result, unknown_string.into_bytes());
+    }
+
+    #[test]
+    fn challenge15() {
+        let valid = "ICE ICE BABY\x04\x04\x04\x04".as_bytes();
+        assert_eq!(valid.validate_pad().unwrap(), "ICE ICE BABY".as_bytes());
+
+        let invalid = "ICE ICE BABY\x04\x04\x04".as_bytes();
+        assert!(invalid.validate_pad().is_err());
+
+        let another_invalid = "ICE ICE BABY\x01\x02\x03\x04".as_bytes();
+        assert!(another_invalid.validate_pad().is_err());
     }
 }

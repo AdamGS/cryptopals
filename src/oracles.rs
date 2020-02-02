@@ -9,13 +9,9 @@ pub fn random_padded_encryption_oracle(cleartext: &[u8], cipher: AesBlockCipher)
     let mut rng = rand::thread_rng();
     let pre_pad = rng.gen_range(5, 11);
     let post_pad = rng.gen_range(5, 11);
-    let padded = &[
-        get_rand_bytes(pre_pad),
-        cleartext.to_vec(),
-        get_rand_bytes(post_pad),
-    ]
-    .concat()
-    .pad(16);
+    let padded = &[get_rand_bytes(pre_pad), cleartext.to_vec(), get_rand_bytes(post_pad)]
+        .concat()
+        .pad(16);
 
     cipher.encrypt(&padded)
 }
@@ -27,14 +23,9 @@ pub fn unknown_string_padded_oracle(cleartext: &[u8], cipher: AesBlockCipher) ->
     cipher.encrypt(&padded)
 }
 
-pub fn prefix_unknown_string_padded_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
+pub fn prefix_unknown_string_padded_oracle(prefix: &[u8], cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
     let unknown_str = read_base64file_to_hex("statics/ch12.txt");
+    let padded = &[prefix, cleartext, &unknown_str].concat().pad(16);
 
-    let mut rng = rand::thread_rng();
-    let pre_pad = rng.gen_range(5, 11);
-    let padded = &[get_rand_bytes(pre_pad), cleartext.to_vec(), unknown_str]
-        .concat()
-        .pad(16);
-
-    cipher.encrypt(padded)
+    cipher.encrypt(&padded)
 }
