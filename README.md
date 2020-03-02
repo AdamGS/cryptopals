@@ -3,7 +3,7 @@ My take on the [cryptopals](https://cryptopals.com/) challenges.
 ---
 Currently done:
  * [X] Set 1 [8/8]
- * [ ] Set 2 [5/8]
+ * [X] Set 2 [8/8]
  * [ ] Set 3 [0/8]
  * [ ] Set 4 [0/8]
  * [ ] Set 5 [0/8]

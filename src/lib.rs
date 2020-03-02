@@ -15,13 +15,14 @@ mod tests {
     use rand::Rng;
 
     use crate::base64::{base64tohex, hex2base64, hex2string, string2hex};
+    use crate::ciphers::aes_ciphers::{AesBlockCipher, AesCbcCipher, AesEcbCipher};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, AesBlockCipher};
-    use crate::ciphers::{AesCbcCipher, AesEcbCipher, Cipher};
+    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, Cipher};
     use crate::oracles::{
-        prefix_unknown_string_padded_oracle, random_padded_encryption_oracle, unknown_string_padded_oracle,
+        cbc_keyval_oracle, prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
+        unknown_string_padded_oracle,
     };
-    use crate::utils::cookie::{parse_kv, profile_for};
+    use crate::utils::cookie::{escape_control_chars, parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
     use itertools::Itertools;
@@ -350,7 +351,7 @@ mod tests {
             .pad(16);
 
         let manipulated_cleartext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
-        assert_eq!(parse_kv(manipulated_cleartext.as_str())["role"], "admin");
+        assert_eq!(parse_kv(manipulated_cleartext.as_str(), '&')["role"], "admin");
     }
 
     #[test]
@@ -402,7 +403,7 @@ mod tests {
         assert_eq!(detected_cipher, cipher.name());
         assert_eq!(detected_cipher, "ECB");
 
-        //We have to know the length of the prefix
+        //We have to know the length of the prefix!
         let mut guessed_prefix_length: usize = 0;
         let mut prev_block: Vec<u8> = Default::default();
 
@@ -427,7 +428,7 @@ mod tests {
 
         // This part is very similar to challenge
         for i in 1..final_result.len() + 1 {
-            let block_count = (1 + (i / 16)) * guessed_block_size;
+            let block_count = (2 + (i / 16)) * guessed_block_size;
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
             //This is a known prefix
@@ -471,5 +472,32 @@ mod tests {
 
         let another_invalid = "ICE ICE BABY\x01\x02\x03\x04".as_bytes();
         assert!(another_invalid.validate_pad().is_err());
+    }
+
+    #[test]
+    fn challenge16() {
+        let key = "AAAAAAAAAAAAAAAA".as_bytes();
+        let iv = "BBBBBBBBBBBBBBBB".as_bytes();
+        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, 16, &iv));
+        let escaped = escape_control_chars("admin=trueAAAAAA");
+
+        let mut ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
+        let decrypted = cipher.decrypt(&ciphertext);
+        println!("Pre: {:?}", decrypted);
+        ciphertext = vec![
+            fixed_xor(ciphertext[0..16].to_vec(), ciphertext[32..48].to_vec()).as_slice(),
+            &ciphertext[16..ciphertext.len()],
+        ]
+        .concat();
+        let decrypted = cipher.decrypt(&ciphertext);
+        println!("Post: {:?}", String::from_utf8(decrypted).unwrap());
+
+        //        let parsed = parse_kv(decrypted.as_str(), ';');
+        //
+        //        if parsed.contains_key("admin") {
+        //            assert!(true);
+        //        } else {
+        //            assert!(false);
+        //        }
     }
 }

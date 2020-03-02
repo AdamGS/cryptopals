@@ -199,13 +199,13 @@ pub mod random {
 pub mod cookie {
     use std::collections::HashMap;
 
-    fn escape_control_chars(input: &str) -> String {
-        input.replace('&', "%26").replace('=', "%3D")
+    pub fn escape_control_chars(input: &str) -> String {
+        input.replace('&', "%26").replace('=', "%3D").replace(';', "%3B")
     }
 
-    pub fn parse_kv(args: &str) -> HashMap<&str, &str> {
+    pub fn parse_kv(args: &str, seperator: char) -> HashMap<&str, &str> {
         let mut hm = HashMap::new();
-        for sub in args.split('&') {
+        for sub in args.split(seperator) {
             let tup: Vec<&str> = sub.split('=').collect();
             hm.insert(tup[0], tup[1]);
         }
