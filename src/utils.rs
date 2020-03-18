@@ -203,10 +203,10 @@ pub mod cookie {
         input.replace('&', "%26").replace('=', "%3D").replace(';', "%3B")
     }
 
-    pub fn parse_kv(args: &str, seperator: char) -> HashMap<&str, &str> {
+    pub fn parse_kv(args: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
         let mut hm = HashMap::new();
-        for sub in args.split(seperator) {
-            let tup: Vec<&str> = sub.split('=').collect();
+        for sub in args.split(|c| *c == separator) {
+            let tup: Vec<&[u8]> = sub.split(|c| *c == b'=').collect();
             hm.insert(tup[0], tup[1]);
         }
 

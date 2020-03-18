@@ -26,6 +26,7 @@ mod tests {
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
     use itertools::Itertools;
+    use std::string::FromUtf8Error;
 
     #[test]
     fn challenge1() {
@@ -351,7 +352,10 @@ mod tests {
             .pad(16);
 
         let manipulated_cleartext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
-        assert_eq!(parse_kv(manipulated_cleartext.as_str(), '&')["role"], "admin");
+        assert_eq!(
+            parse_kv(manipulated_cleartext.as_bytes(), b'&')["role".as_bytes()],
+            "admin".as_bytes()
+        );
     }
 
     #[test]
@@ -479,25 +483,21 @@ mod tests {
         let key = "AAAAAAAAAAAAAAAA".as_bytes();
         let iv = "BBBBBBBBBBBBBBBB".as_bytes();
         let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, 16, &iv));
-        let escaped = escape_control_chars("admin=trueAAAAAA");
+        let mut escaped = escape_control_chars("XadminXtrue");
 
-        let mut ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
-        let decrypted = cipher.decrypt(&ciphertext);
-        println!("Pre: {:?}", decrypted);
-        ciphertext = vec![
-            fixed_xor(ciphertext[0..16].to_vec(), ciphertext[32..48].to_vec()).as_slice(),
-            &ciphertext[16..ciphertext.len()],
-        ]
-        .concat();
-        let decrypted = cipher.decrypt(&ciphertext);
-        println!("Post: {:?}", String::from_utf8(decrypted).unwrap());
+        let ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
+        let first_decrypted = cipher.decrypt(&ciphertext);
 
-        //        let parsed = parse_kv(decrypted.as_str(), ';');
-        //
-        //        if parsed.contains_key("admin") {
-        //            assert!(true);
-        //        } else {
-        //            assert!(false);
-        //        }
+        let decrypted_string = String::from_utf8(first_decrypted).unwrap();
+        let mut modified_ciphertext = ciphertext.clone();
+        let base = 16;
+
+        modified_ciphertext[base] = modified_ciphertext[base] ^ b'X' ^ b';';
+        modified_ciphertext[base + 6] = modified_ciphertext[base + 6] ^ b'X' ^ b'=';
+
+        let decrypted = cipher.decrypt(&modified_ciphertext);
+        let parsed = parse_kv(decrypted.as_slice(), b';');
+
+        assert!(parsed.contains_key("admin".as_bytes()))
     }
 }
