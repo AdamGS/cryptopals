@@ -32,8 +32,8 @@ pub fn prefix_unknown_string_padded_oracle(prefix: &[u8], cleartext: &[u8], ciph
 }
 
 pub fn cbc_keyval_oracle(cleartext: &[u8], cipher: AesBlockCipher) -> Vec<u8> {
-    let prefix = "comment1=cooking%20MCs;userdata=".as_bytes();
-    let sufix = ";comment2=%20like%20a%20pound%20of%20bacon".as_bytes();
+    let prefix = b"comment1=cooking%20MCs;userdata=";
+    let sufix = b";comment2=%20like%20a%20pound%20of%20bacon";
     let padded = &[prefix, cleartext, sufix].concat().pad(16);
 
     cipher.encrypt(&padded)

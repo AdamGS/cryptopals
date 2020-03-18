@@ -26,6 +26,7 @@ mod tests {
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
     use itertools::Itertools;
+    use std::string::FromUtf8Error;
 
     #[test]
     fn challenge1() {
@@ -72,11 +73,8 @@ mod tests {
                 let cleartext = single_byte_xor_cipher(&string2hex(line), key);
                 let cleartext_string = String::from_utf8(cleartext);
 
-                match cleartext_string {
-                    Ok(v) => {
-                        score_map.insert(v.clone(), rate_string(v.clone().as_str()));
-                    }
-                    _ => (),
+                if let Ok(v) = cleartext_string {
+                    score_map.insert(v.clone(), rate_string(v.clone().as_str()));
                 }
             }
         }
@@ -96,8 +94,8 @@ mod tests {
 
     #[test]
     fn challenge5() {
-        let key = "ICE".as_bytes();
-        let cleartext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".as_bytes();
+        let key = b"ICE";
+        let cleartext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
         let ciphertext = hex2string(repeating_key_xor_cipher(cleartext, key));
 
         assert_eq!(
@@ -194,8 +192,8 @@ mod tests {
     #[test]
     fn challenge9() {
         assert_eq!(
-            String::from_utf8("YELLOW_SUBMARINE".as_bytes().pad(20)).unwrap(),
-            "YELLOW_SUBMARINE\x04\x04\x04\x04"
+            "YELLOW_SUBMARINE".as_bytes().pad(20),
+            b"YELLOW_SUBMARINE\x04\x04\x04\x04"
         )
     }
 
@@ -351,7 +349,10 @@ mod tests {
             .pad(16);
 
         let manipulated_cleartext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
-        assert_eq!(parse_kv(manipulated_cleartext.as_str(), '&')["role"], "admin");
+        assert_eq!(
+            parse_kv(manipulated_cleartext.as_bytes(), b'&')["role".as_bytes()],
+            "admin".as_bytes()
+        );
     }
 
     #[test]
@@ -465,39 +466,37 @@ mod tests {
     #[test]
     fn challenge15() {
         let valid = "ICE ICE BABY\x04\x04\x04\x04".as_bytes();
-        assert_eq!(valid.validate_pad().unwrap(), "ICE ICE BABY".as_bytes());
+        assert_eq!(valid.strip_pad().unwrap(), "ICE ICE BABY".as_bytes());
 
         let invalid = "ICE ICE BABY\x04\x04\x04".as_bytes();
-        assert!(invalid.validate_pad().is_err());
+        assert!(invalid.strip_pad().is_err());
 
         let another_invalid = "ICE ICE BABY\x01\x02\x03\x04".as_bytes();
-        assert!(another_invalid.validate_pad().is_err());
+        assert!(another_invalid.strip_pad().is_err());
     }
 
     #[test]
     fn challenge16() {
-        let key = "AAAAAAAAAAAAAAAA".as_bytes();
-        let iv = "BBBBBBBBBBBBBBBB".as_bytes();
-        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, 16, &iv));
-        let escaped = escape_control_chars("admin=trueAAAAAA");
+        let block_size = 16;
+        let key = get_rand_bytes(block_size);
+        let iv = get_rand_bytes(block_size);
 
-        let mut ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
-        let decrypted = cipher.decrypt(&ciphertext);
-        println!("Pre: {:?}", decrypted);
-        ciphertext = vec![
-            fixed_xor(ciphertext[0..16].to_vec(), ciphertext[32..48].to_vec()).as_slice(),
-            &ciphertext[16..ciphertext.len()],
-        ]
-        .concat();
-        let decrypted = cipher.decrypt(&ciphertext);
-        println!("Post: {:?}", String::from_utf8(decrypted).unwrap());
+        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, block_size, &iv));
+        let mut escaped = escape_control_chars("XadminXtrue");
 
-        //        let parsed = parse_kv(decrypted.as_str(), ';');
-        //
-        //        if parsed.contains_key("admin") {
-        //            assert!(true);
-        //        } else {
-        //            assert!(false);
-        //        }
+        let ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
+        let first_decrypted = cipher.decrypt(&ciphertext);
+
+        let decrypted_string = String::from_utf8(first_decrypted).unwrap();
+        let mut modified_ciphertext = ciphertext.clone();
+        let base = 16;
+
+        modified_ciphertext[base] = modified_ciphertext[base] ^ b'X' ^ b';';
+        modified_ciphertext[base + 6] = modified_ciphertext[base + 6] ^ b'X' ^ b'=';
+
+        let decrypted = cipher.decrypt(&modified_ciphertext);
+        let parsed = parse_kv(decrypted.as_slice(), b';');
+
+        assert!(parsed.contains_key("admin".as_bytes()))
     }
 }

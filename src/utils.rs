@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use crate::bitarray::BitArray;
+use std::cmp::Ordering;
 
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
-    fn validate_pad(&self) -> Result<Vec<u8>, ()>;
+    fn strip_pad(&self) -> Result<Vec<u8>, ()>;
 }
 
 impl ByteSlice for [u8] {
@@ -12,7 +13,7 @@ impl ByteSlice for [u8] {
         pkcs7_pad(self, block_size)
     }
 
-    fn validate_pad(&self) -> Result<Vec<u8>, ()> {
+    fn strip_pad(&self) -> Result<Vec<u8>, ()> {
         let last_byte = *self.last().unwrap() as usize;
         if self[self.len() - last_byte..self.len()].to_vec() == vec![last_byte as u8; last_byte] {
             Ok(self[0..self.len() - last_byte].to_vec())
@@ -20,17 +21,6 @@ impl ByteSlice for [u8] {
             Err(())
         }
     }
-}
-
-pub fn euclidean_distance(vec1: Vec<f64>, vec2: Vec<f64>) -> f64 {
-    assert_eq!(vec1.len(), vec2.len());
-    let mut sum = 0f64;
-
-    for i in 0..vec1.len() {
-        sum += (vec1[i] - vec2[i]).powf(2.0);
-    }
-
-    sum.sqrt()
 }
 
 pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
@@ -56,22 +46,16 @@ pub fn rate_string(input: &str) -> i64 {
 }
 
 pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
-    if arg1.len() > arg2.len() {
-        return arg1.len() - arg2.len();
-    } else if arg1.len() < arg2.len() {
-        return arg2.len() - arg1.len();
+    match arg1.len().cmp(&arg2.len()) {
+        Ordering::Less => (arg2.len() - arg1.len()),
+        Ordering::Greater => (arg1.len() - arg2.len()),
+        Ordering::Equal => {
+            let mut first_bits = BitArray::new(arg1, 1);
+            let mut second_bits = BitArray::new(arg2, 1);
+
+            first_bits.zip(second_bits).map(|(a, b)| a ^ b).sum::<u8>() as usize
+        }
     }
-
-    let mut first_bits = BitArray::new(arg1, 1);
-    let mut second_bits = BitArray::new(arg2, 1);
-
-    let mut count = 0;
-
-    while let (Some(f), Some(s)) = (first_bits.next(), second_bits.next()) {
-        count += f ^ s;
-    }
-
-    count as usize
 }
 
 pub fn hex_to_char(i: u8) -> char {
@@ -93,9 +77,8 @@ pub fn char_to_hex(c: char) -> u8 {
 pub fn all_ascii_chars() -> Vec<char> {
     //TODO: Replace with macro
     use std::iter::FromIterator;
-    let iter = (0_u8..128_u8).map(|x| (x as char));
 
-    Vec::from_iter(iter)
+    Vec::from_iter((0_u8..128_u8).map(|x| (x as char)))
 }
 
 pub fn frequency_map() -> HashMap<char, f64> {
@@ -203,10 +186,10 @@ pub mod cookie {
         input.replace('&', "%26").replace('=', "%3D").replace(';', "%3B")
     }
 
-    pub fn parse_kv(args: &str, seperator: char) -> HashMap<&str, &str> {
+    pub fn parse_kv(args: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
         let mut hm = HashMap::new();
-        for sub in args.split(seperator) {
-            let tup: Vec<&str> = sub.split('=').collect();
+        for sub in args.split(|c| *c == separator) {
+            let tup: Vec<&[u8]> = sub.split(|c| *c == b'=').collect();
             hm.insert(tup[0], tup[1]);
         }
 

@@ -1,9 +1,4 @@
-use aes::block_cipher_trait::BlockCipher;
-use aes::Aes128;
-use rand::Rng;
-
-use crate::utils::random::get_rand_bytes;
-use crate::utils::{fixed_xor, read_base64file_to_hex, ByteSlice};
+use crate::utils::fixed_xor;
 
 pub mod aes_ciphers;
 
@@ -12,8 +7,28 @@ pub trait Cipher {
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
 }
 
-pub fn single_byte_xor_cipher(ciphertext: &[u8], byte_key: u8) -> Vec<u8> {
-    let key = vec![byte_key; ciphertext.len()];
+struct XorCipher {
+    key: u8,
+}
+
+impl XorCipher {
+    pub fn new(key: u8) -> Self {
+        XorCipher { key }
+    }
+}
+
+impl Cipher for XorCipher {
+    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
+        single_byte_xor_cipher(cleartext, self.key)
+    }
+
+    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+        single_byte_xor_cipher(ciphertext, self.key)
+    }
+}
+
+pub fn single_byte_xor_cipher(ciphertext: &[u8], key: u8) -> Vec<u8> {
+    let key = vec![key; ciphertext.len()];
     fixed_xor(key, ciphertext.to_owned())
 }
 
