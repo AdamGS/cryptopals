@@ -25,8 +25,6 @@ mod tests {
     use crate::utils::cookie::{escape_control_chars, parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
-    use itertools::Itertools;
-    use std::string::FromUtf8Error;
 
     #[test]
     fn challenge1() {
@@ -53,9 +51,9 @@ mod tests {
         let ciphertext = string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 
         let key = break_single_xor_cipher(ciphertext.as_slice());
-        let fin_string = String::from_utf8(single_byte_xor_cipher(&ciphertext, key)).unwrap();
+        let final_string = single_byte_xor_cipher(&ciphertext, key);
 
-        assert_eq!("Cooking MC's like a pound of bacon", fin_string);
+        assert_eq!(b"Cooking MC's like a pound of bacon".to_vec(), final_string);
     }
 
     #[test]
@@ -143,8 +141,6 @@ mod tests {
             key[i] = break_single_xor_cipher(s.as_slice());
         }
 
-        let f = repeating_key_xor_cipher(ciphertext.as_slice(), key.as_slice());
-        let s = String::from_utf8(f).unwrap();
         let s_key = String::from_utf8(key).unwrap();
 
         assert_eq!(s_key, "Terminator X: Bring the noise");
@@ -483,14 +479,10 @@ mod tests {
         let iv = get_rand_bytes(block_size);
 
         let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, block_size, &iv));
-        let mut escaped = escape_control_chars("XadminXtrue");
+        let escaped = escape_control_chars("XadminXtrue");
+        let mut modified_ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
 
-        let ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
-        let first_decrypted = cipher.decrypt(&ciphertext);
-
-        let mut modified_ciphertext = ciphertext.clone();
         let prev_block_idx = 16;
-
         modified_ciphertext[prev_block_idx] = modified_ciphertext[prev_block_idx] ^ b'X' ^ b';';
         modified_ciphertext[prev_block_idx + 6] = modified_ciphertext[prev_block_idx + 6] ^ b'X' ^ b'=';
 

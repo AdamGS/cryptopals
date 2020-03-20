@@ -211,7 +211,7 @@ pub mod cookie {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::cookie::{parse_kv, profile_for};
+    use crate::utils::cookie::profile_for;
 
     use super::*;
 
