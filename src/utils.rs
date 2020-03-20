@@ -1,7 +1,7 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use crate::bitarray::BitArray;
-use std::cmp::Ordering;
 
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
@@ -33,16 +33,13 @@ pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
 pub fn rate_string(input: &str) -> i64 {
     let freq_map = frequency_map();
 
-    let mut score = 0;
-
-    for clear_c in input.as_bytes() {
-        let new_char = *clear_c as char;
-        if let Some(s) = freq_map.get(&new_char) {
-            score += (*s * 1000_f64) as i64;
-        }
-    }
-
-    score
+    input
+        .as_bytes()
+        .iter()
+        .map(|c| *c as char)
+        .filter(|c| freq_map.contains_key(c))
+        .map(|k| (*freq_map.get(&k).unwrap() * 1000_f64) as i64)
+        .sum()
 }
 
 pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
@@ -50,8 +47,8 @@ pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
         Ordering::Less => (arg2.len() - arg1.len()),
         Ordering::Greater => (arg1.len() - arg2.len()),
         Ordering::Equal => {
-            let mut first_bits = BitArray::new(arg1, 1);
-            let mut second_bits = BitArray::new(arg2, 1);
+            let first_bits = BitArray::new(arg1, 1);
+            let second_bits = BitArray::new(arg2, 1);
 
             first_bits.zip(second_bits).map(|(a, b)| a ^ b).sum::<u8>() as usize
         }
