@@ -223,10 +223,10 @@ mod tests {
 
     #[test]
     fn no_padding_needed_test() {
-        let padded = "YELLOW SUBMARINE".as_bytes().pad(16);
+        let padded = b"YELLOW SUBMARINE".pad(16);
         assert_eq!(
-            "YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10",
-            String::from_utf8(padded).unwrap()
+            b"YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10",
+            padded.as_slice()
         );
     }
 
