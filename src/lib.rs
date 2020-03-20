@@ -70,10 +70,10 @@ mod tests {
 
         for line in file_lines {
             for key in hex_keys.to_owned() {
-                let cleartext = single_byte_xor_cipher(&string2hex(line), key);
-                let cleartext_string = String::from_utf8(cleartext);
+                let plaintext = single_byte_xor_cipher(&string2hex(line), key);
+                let plaintext_string = String::from_utf8(plaintext);
 
-                if let Ok(v) = cleartext_string {
+                if let Ok(v) = plaintext_string {
                     score_map.insert(v.clone(), rate_string(v.clone().as_str()));
                 }
             }
@@ -95,8 +95,8 @@ mod tests {
     #[test]
     fn challenge5() {
         let key = b"ICE";
-        let cleartext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-        let ciphertext = hex2string(repeating_key_xor_cipher(cleartext, key));
+        let plaintext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+        let ciphertext = hex2string(repeating_key_xor_cipher(plaintext, key));
 
         assert_eq!(
             ciphertext,
@@ -204,11 +204,11 @@ mod tests {
             16,
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".as_bytes(),
         );
-        let cleartext = "YELLOW SUBMARINEYELLOW SUBMARINE";
-        let ciphertext = cipher.encrypt(cleartext.as_bytes());
-        let new_cleartext = cipher.decrypt(ciphertext.as_slice());
+        let plaintext = "YELLOW SUBMARINEYELLOW SUBMARINE";
+        let ciphertext = cipher.encrypt(plaintext.as_bytes());
+        let new_plaintext = cipher.decrypt(ciphertext.as_slice());
 
-        assert_eq!(cleartext.as_bytes(), &new_cleartext[0..cleartext.len()]);
+        assert_eq!(plaintext.as_bytes(), &new_plaintext[0..plaintext.len()]);
     }
 
     #[test]
@@ -261,8 +261,8 @@ mod tests {
 
         //Let's figure out the block size!
         for l in 2..40 {
-            let dummy_cleartext = vec![65u8; l];
-            let ciphertext = unknown_string_padded_oracle(&dummy_cleartext, cipher);
+            let dummy_plaintext = vec![65u8; l];
+            let ciphertext = unknown_string_padded_oracle(&dummy_plaintext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -339,8 +339,8 @@ mod tests {
         let key = get_rand_bytes(16);
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(&key, 16));
 
-        let cleartext_profile = profile_for("user@user.com").as_bytes().pad(16);
-        let ciphertext = cipher.encrypt(&cleartext_profile);
+        let plaintext_profile = profile_for("user@user.com").as_bytes().pad(16);
+        let ciphertext = cipher.encrypt(&plaintext_profile);
         let admin_profile = profile_for("user@user.admin").as_bytes().pad(16);
         let admin_ciphertext = cipher.encrypt(&admin_profile);
 
@@ -348,9 +348,9 @@ mod tests {
             .concat()
             .pad(16);
 
-        let manipulated_cleartext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
+        let manipulated_plaintext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
         assert_eq!(
-            parse_kv(manipulated_cleartext.as_bytes(), b'&')["role".as_bytes()],
+            parse_kv(manipulated_plaintext.as_bytes(), b'&')["role".as_bytes()],
             "admin".as_bytes()
         );
     }
@@ -370,8 +370,8 @@ mod tests {
 
         //Let's figure out the block size!
         for l in 2..40 {
-            let dummy_cleartext = vec![65u8; l];
-            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &dummy_cleartext, cipher);
+            let dummy_plaintext = vec![65u8; l];
+            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &dummy_plaintext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -465,13 +465,14 @@ mod tests {
 
     #[test]
     fn challenge15() {
-        let valid = "ICE ICE BABY\x04\x04\x04\x04".as_bytes();
-        assert_eq!(valid.strip_pad().unwrap(), "ICE ICE BABY".as_bytes());
+        let valid = b"ICE ICE BABY\x04\x04\x04\x04";
+        assert!(valid.strip_pad().is_ok());
+        assert_eq!(valid.strip_pad().unwrap(), b"ICE ICE BABY");
 
-        let invalid = "ICE ICE BABY\x04\x04\x04".as_bytes();
+        let invalid = b"ICE ICE BABY\x04\x04\x04";
         assert!(invalid.strip_pad().is_err());
 
-        let another_invalid = "ICE ICE BABY\x01\x02\x03\x04".as_bytes();
+        let another_invalid = b"ICE ICE BABY\x01\x02\x03\x04";
         assert!(another_invalid.strip_pad().is_err());
     }
 
@@ -487,12 +488,11 @@ mod tests {
         let ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
         let first_decrypted = cipher.decrypt(&ciphertext);
 
-        let decrypted_string = String::from_utf8(first_decrypted).unwrap();
         let mut modified_ciphertext = ciphertext.clone();
-        let base = 16;
+        let prev_block_idx = 16;
 
-        modified_ciphertext[base] = modified_ciphertext[base] ^ b'X' ^ b';';
-        modified_ciphertext[base + 6] = modified_ciphertext[base + 6] ^ b'X' ^ b'=';
+        modified_ciphertext[prev_block_idx] = modified_ciphertext[prev_block_idx] ^ b'X' ^ b';';
+        modified_ciphertext[prev_block_idx + 6] = modified_ciphertext[prev_block_idx + 6] ^ b'X' ^ b'=';
 
         let decrypted = cipher.decrypt(&modified_ciphertext);
         let parsed = parse_kv(decrypted.as_slice(), b';');

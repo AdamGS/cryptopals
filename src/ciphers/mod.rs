@@ -3,7 +3,7 @@ use crate::utils::fixed_xor;
 pub mod aes_ciphers;
 
 pub trait Cipher {
-    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8>;
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8>;
 }
 
@@ -18,8 +18,8 @@ impl XorCipher {
 }
 
 impl Cipher for XorCipher {
-    fn encrypt(&self, cleartext: &[u8]) -> Vec<u8> {
-        single_byte_xor_cipher(cleartext, self.key)
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+        single_byte_xor_cipher(plaintext, self.key)
     }
 
     fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
@@ -56,13 +56,13 @@ pub mod breakers {
         let mut base = 0;
         let mut suspected_key = 0_u8;
         for key in hex_keys {
-            let cleartext: Vec<char> = single_byte_xor_cipher(&ciphertext, key)
+            let plaintext: Vec<char> = single_byte_xor_cipher(&ciphertext, key)
                 .iter()
                 .map(|b| *b as char)
                 .collect();
-            let cleartext_string = String::from_iter(cleartext);
+            let plaintext_string = String::from_iter(plaintext);
 
-            let string_rating = rate_string(&cleartext_string.as_str());
+            let string_rating = rate_string(&plaintext_string.as_str());
 
             if string_rating > base {
                 suspected_key = key;
@@ -86,8 +86,8 @@ mod tests {
         let cipher = AesEcbCipher::new(key, 16);
 
         let ciphertext = cipher.encrypt(clear_text);
-        let new_cleartext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
+        let new_plaintext = String::from_utf8(cipher.decrypt(ciphertext.as_slice())).unwrap();
 
-        assert_eq!("YELLOW SUBMARINE", new_cleartext)
+        assert_eq!("YELLOW SUBMARINE", new_plaintext)
     }
 }
