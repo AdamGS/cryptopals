@@ -77,17 +77,9 @@ mod tests {
             }
         }
 
-        let mut curr_score = 0;
-        let mut curr_string = String::new();
+        let max_score = score_map.iter().max_by(|a, b| a.1.cmp(b.1)).unwrap().0;
 
-        for (string, score) in score_map {
-            if score >= curr_score {
-                curr_score = score;
-                curr_string = string;
-            }
-        }
-
-        assert_eq!("Now that the party is jumping\n", curr_string);
+        assert_eq!("Now that the party is jumping\n", max_score);
     }
 
     #[test]
@@ -125,9 +117,8 @@ mod tests {
             vec.push((normalized_distance, keysize));
         }
 
-        vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        let actual_keysize = vec.iter().min_by(|a, b| a.0.cmp(&b.0)).unwrap().1;
 
-        let actual_keysize = vec.first().unwrap().1;
         assert_eq!(actual_keysize, 29);
 
         let mut strings = vec![Vec::new(); actual_keysize];
