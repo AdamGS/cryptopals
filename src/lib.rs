@@ -50,7 +50,7 @@ mod tests {
     fn challenge3() {
         let ciphertext = string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 
-        let key = break_single_xor_cipher(ciphertext.as_slice());
+        let key = break_single_xor_cipher(&ciphertext);
         let final_string = single_byte_xor_cipher(&ciphertext, key);
 
         assert_eq!(b"Cooking MC's like a pound of bacon".to_vec(), final_string);
@@ -68,7 +68,7 @@ mod tests {
 
         for line in file_lines {
             for key in hex_keys.to_owned() {
-                let plaintext = single_byte_xor_cipher(&string2hex(line), key);
+                let plaintext = single_byte_xor_cipher(string2hex(line), key);
                 let plaintext_string = String::from_utf8(plaintext);
 
                 if let Ok(v) = plaintext_string {
@@ -84,8 +84,8 @@ mod tests {
 
     #[test]
     fn challenge5() {
-        let key = b"ICE";
-        let plaintext = b"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+        let key = "ICE";
+        let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
         let ciphertext = hex2string(repeating_key_xor_cipher(plaintext, key));
 
         assert_eq!(
@@ -140,10 +140,10 @@ mod tests {
     #[test]
     fn challenge7() {
         let ciphertext = read_base64file_to_hex("statics/set1ch7.txt");
-        let key = "YELLOW SUBMARINE";
-        let cipher = AesEcbCipher::new(key.as_bytes(), 16);
+        let key = b"YELLOW SUBMARINE";
+        let cipher = AesEcbCipher::new(key, 16);
 
-        let s = cipher.decrypt(ciphertext.as_slice());
+        let s = cipher.decrypt(ciphertext);
 
         println!("{:?}", String::from_utf8(s).unwrap());
     }
@@ -191,11 +191,11 @@ mod tests {
             16,
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00".as_bytes(),
         );
-        let plaintext = "YELLOW SUBMARINEYELLOW SUBMARINE";
-        let ciphertext = cipher.encrypt(plaintext.as_bytes());
-        let new_plaintext = cipher.decrypt(ciphertext.as_slice());
+        let plaintext = b"YELLOW SUBMARINEYELLOW SUBMARINE";
+        let ciphertext = cipher.encrypt(plaintext);
+        let new_plaintext = cipher.decrypt(ciphertext);
 
-        assert_eq!(plaintext.as_bytes(), &new_plaintext[0..plaintext.len()]);
+        assert_eq!(plaintext, &new_plaintext[0..plaintext.len()]);
     }
 
     #[test]
@@ -209,11 +209,11 @@ mod tests {
         let iv = get_rand_bytes(block_size);
 
         let cipher: AesBlockCipher = match coinflip % 2 == 0 {
-            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_ref(), block_size)),
-            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_ref(), block_size, iv.as_slice())),
+            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_slice(), block_size)),
+            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_slice(), block_size, iv.as_slice())),
         };
 
-        let ciphertext = random_padded_encryption_oracle(text.as_bytes(), cipher.clone());
+        let ciphertext = random_padded_encryption_oracle(text, cipher);
 
         let mut identical_block_count = 0;
 
@@ -327,18 +327,18 @@ mod tests {
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(&key, 16));
 
         let plaintext_profile = profile_for("user@user.com").as_bytes().pad(16);
-        let ciphertext = cipher.encrypt(&plaintext_profile);
+        let ciphertext = cipher.encrypt(plaintext_profile);
         let admin_profile = profile_for("user@user.admin").as_bytes().pad(16);
-        let admin_ciphertext = cipher.encrypt(&admin_profile);
+        let admin_ciphertext = cipher.encrypt(admin_profile);
 
         let manipulated = [ciphertext[0..32].to_vec(), admin_ciphertext[16..32].to_vec()]
             .concat()
             .pad(16);
 
-        let manipulated_plaintext = String::from_utf8(cipher.decrypt(&manipulated)[0..37].to_vec()).unwrap();
+        let manipulated_plaintext = &cipher.decrypt(manipulated)[0..37];
         assert_eq!(
-            parse_kv(manipulated_plaintext.as_bytes(), b'&')["role".as_bytes()],
-            "admin".as_bytes()
+            parse_kv(manipulated_plaintext, b'&')[b"role".as_ref()],
+            b"admin".as_ref()
         );
     }
 
@@ -353,12 +353,12 @@ mod tests {
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = prefix_unknown_string_padded_oracle(&prefix, &[65u8], cipher).len();
+        let baseline = prefix_unknown_string_padded_oracle(&prefix, [65u8], cipher).len();
 
         //Let's figure out the block size!
         for l in 2..40 {
             let dummy_plaintext = vec![65u8; l];
-            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &dummy_plaintext, cipher);
+            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, dummy_plaintext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -369,7 +369,7 @@ mod tests {
 
         //Now we detected it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
-        let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &known_str, cipher);
+        let ciphertext = prefix_unknown_string_padded_oracle(&prefix, known_str, cipher);
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -397,7 +397,7 @@ mod tests {
 
         // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
         for i in 1..17 {
-            let cipher = prefix_unknown_string_padded_oracle(&prefix, &vec![65u8; i], cipher);
+            let cipher = prefix_unknown_string_padded_oracle(&prefix, vec![65u8; i], cipher);
 
             // If we filled the block ("overpadded" it), it will look the same as the previous 16 bytes.
             if cipher[0..16].to_vec() == prev_block {
@@ -422,7 +422,7 @@ mod tests {
             //This is a known prefix
             let base_ciphertext = prefix_unknown_string_padded_oracle(
                 &prefix,
-                &vec![65u8; block_count - i - guessed_prefix_length],
+                vec![65u8; block_count - i - guessed_prefix_length],
                 cipher,
             );
 
@@ -436,7 +436,7 @@ mod tests {
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
-                let ciphertext = prefix_unknown_string_padded_oracle(&prefix, &input, cipher);
+                let ciphertext = prefix_unknown_string_padded_oracle(&prefix, input, cipher);
 
                 //We put the precomputed ciphertext in here
                 hashmap.insert(ciphertext[0..block_count].to_vec(), c);
@@ -471,14 +471,14 @@ mod tests {
 
         let cipher = AesBlockCipher::CBC(AesCbcCipher::new(&key, block_size, &iv));
         let escaped = escape_control_chars("XadminXtrue");
-        let mut modified_ciphertext = cbc_keyval_oracle(escaped.as_bytes(), cipher);
+        let mut modified_ciphertext = cbc_keyval_oracle(escaped, cipher);
 
         let prev_block_idx = 16;
-        modified_ciphertext[prev_block_idx] = modified_ciphertext[prev_block_idx] ^ b'X' ^ b';';
-        modified_ciphertext[prev_block_idx + 6] = modified_ciphertext[prev_block_idx + 6] ^ b'X' ^ b'=';
+        modified_ciphertext[prev_block_idx] ^= b'X' ^ b';';
+        modified_ciphertext[prev_block_idx + 6] ^= b'X' ^ b'=';
 
-        let decrypted = cipher.decrypt(&modified_ciphertext);
-        let parsed = parse_kv(decrypted.as_slice(), b';');
+        let decrypted = cipher.decrypt(modified_ciphertext);
+        let parsed = parse_kv(&decrypted, b';');
 
         assert!(parsed.contains_key("admin".as_bytes()))
     }

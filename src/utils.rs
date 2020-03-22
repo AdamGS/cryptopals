@@ -23,18 +23,18 @@ impl ByteSlice for [u8] {
     }
 }
 
-pub fn fixed_xor(arg1: Vec<u8>, arg2: Vec<u8>) -> Vec<u8> {
-    assert_eq!(arg1.len(), arg2.len());
-    let zip = arg1.iter().zip(arg2.iter());
+pub fn fixed_xor<T: AsRef<[u8]>, S: AsRef<[u8]>>(arg1: T, arg2: S) -> Vec<u8> {
+    assert_eq!(arg1.as_ref().len(), arg2.as_ref().len());
+    let zip = arg1.as_ref().iter().zip(arg2.as_ref().iter());
 
     zip.map(|(a, b)| a ^ b).collect()
 }
 
-pub fn rate_string(input: &str) -> i64 {
+pub fn rate_string<T: AsRef<[u8]>>(input: T) -> i64 {
     let freq_map = frequency_map();
 
     input
-        .as_bytes()
+        .as_ref()
         .iter()
         .map(|c| *c as char)
         .filter(|c| freq_map.contains_key(c))
@@ -42,13 +42,15 @@ pub fn rate_string(input: &str) -> i64 {
         .sum()
 }
 
-pub fn hamming_distance(arg1: &[u8], arg2: &[u8]) -> usize {
-    match arg1.len().cmp(&arg2.len()) {
-        Ordering::Less => (arg2.len() - arg1.len()),
-        Ordering::Greater => (arg1.len() - arg2.len()),
+pub fn hamming_distance<T: AsRef<[u8]>>(arg1: T, arg2: T) -> usize {
+    let first_arg = arg1.as_ref();
+    let second_arg = arg2.as_ref();
+    match first_arg.len().cmp(&second_arg.len()) {
+        Ordering::Less => (second_arg.len() - first_arg.len()),
+        Ordering::Greater => (first_arg.len() - second_arg.len()),
         Ordering::Equal => {
-            let first_bits = BitArray::new(arg1, 1);
-            let second_bits = BitArray::new(arg2, 1);
+            let first_bits = BitArray::new(first_arg, 1);
+            let second_bits = BitArray::new(second_arg, 1);
 
             first_bits.zip(second_bits).map(|(a, b)| a ^ b).sum::<u8>() as usize
         }
@@ -164,7 +166,7 @@ fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
     let pad_char = (block_size - byte_slice.len() % block_size) as u8;
     let pad_length = block_size - (byte_slice.len() % block_size);
 
-    [byte_slice, vec![pad_char; pad_length].as_slice()].concat()
+    [byte_slice.to_vec(), vec![pad_char; pad_length]].concat()
 }
 
 pub mod random {
@@ -179,13 +181,17 @@ pub mod random {
 pub mod cookie {
     use std::collections::HashMap;
 
-    pub fn escape_control_chars(input: &str) -> String {
-        input.replace('&', "%26").replace('=', "%3D").replace(';', "%3B")
+    pub fn escape_control_chars<T: AsRef<str>>(input: T) -> String {
+        input
+            .as_ref()
+            .replace('&', "%26")
+            .replace('=', "%3D")
+            .replace(';', "%3B")
     }
 
-    pub fn parse_kv(args: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
+    pub fn parse_kv(values: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
         let mut hm = HashMap::new();
-        for sub in args.split(|c| *c == separator) {
+        for sub in values.as_ref().split(|c| *c == separator) {
             let tup: Vec<&[u8]> = sub.split(|c| *c == b'=').collect();
             hm.insert(tup[0], tup[1]);
         }
@@ -217,7 +223,7 @@ mod tests {
 
     #[test]
     fn hamming_distance_test() {
-        let distance = hamming_distance("this is a test".as_bytes(), "wokka wokka!!!".as_bytes());
+        let distance = hamming_distance("this is a test", "wokka wokka!!!");
         assert_eq!(distance, 37);
     }
 

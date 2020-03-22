@@ -19,15 +19,15 @@ impl AesBlockCipher<'_> {
     }
 }
 
-impl<'e> Cipher for AesBlockCipher<'e> {
-    fn encrypt<'g>(&self, plaintext: &'g [u8]) -> Vec<u8> {
+impl<'e, T: AsRef<[u8]>> Cipher<T> for AesBlockCipher<'e> {
+    fn encrypt<'g>(&self, plaintext: T) -> Vec<u8> {
         match self {
             AesBlockCipher::CBC(c) => c.encrypt(plaintext),
             AesBlockCipher::ECB(c) => c.encrypt(plaintext),
         }
     }
 
-    fn decrypt<'f>(&self, ciphertext: &'f [u8]) -> Vec<u8> {
+    fn decrypt<'f>(&self, ciphertext: T) -> Vec<u8> {
         match self {
             AesBlockCipher::CBC(c) => c.decrypt(ciphertext),
             AesBlockCipher::ECB(c) => c.decrypt(ciphertext),
@@ -48,24 +48,21 @@ impl<'b> AesCbcCipher<'b> {
     }
 }
 
-impl<'b> Cipher for AesCbcCipher<'b> {
-    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
-        let padded_text = plaintext;
+impl<'b, T: AsRef<[u8]>> Cipher<T> for AesCbcCipher<'b> {
+    fn encrypt(&self, plaintext: T) -> Vec<u8> {
+        let padded_text = plaintext.as_ref();
         let ecb = AesEcbCipher::new(self.key, self.block_size);
 
         padded_text
             .chunks(self.block_size)
             .fold(Vec::new(), |mut acc: Vec<u8>, curr_block| {
                 let xored_value = if acc.is_empty() {
-                    fixed_xor(curr_block.to_vec(), self.iv.to_vec())
+                    fixed_xor(curr_block, self.iv)
                 } else {
-                    fixed_xor(
-                        curr_block.to_vec(),
-                        acc[acc.len() - self.block_size..acc.len()].to_vec(),
-                    )
+                    fixed_xor(&curr_block, &acc[acc.len() - self.block_size..acc.len()])
                 };
 
-                let mut encrypted_block = ecb.encrypt(xored_value.as_slice());
+                let mut encrypted_block = ecb.encrypt(xored_value);
 
                 acc.append(encrypted_block.as_mut());
 
@@ -73,18 +70,18 @@ impl<'b> Cipher for AesCbcCipher<'b> {
             })
     }
 
-    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+    fn decrypt(&self, ciphertext: T) -> Vec<u8> {
         let ecb = AesEcbCipher::new(self.key, self.block_size);
 
-        ciphertext.to_vec().chunks(self.block_size).enumerate().fold(
+        ciphertext.as_ref().chunks(self.block_size).enumerate().fold(
             Vec::new(),
             |mut acc: Vec<u8>, (index, curr_block)| {
                 let decrypted_block = ecb.decrypt(curr_block);
 
                 let mut xored_value = if acc.is_empty() {
-                    fixed_xor(decrypted_block, self.iv.to_vec())
+                    fixed_xor(decrypted_block, self.iv)
                 } else {
-                    let ciphertext_blocks: Vec<&[u8]> = ciphertext.chunks(self.block_size).collect();
+                    let ciphertext_blocks: Vec<&[u8]> = ciphertext.as_ref().chunks(self.block_size).collect();
                     fixed_xor(decrypted_block, ciphertext_blocks[index - 1].to_vec())
                 };
 
@@ -109,12 +106,12 @@ impl<'c> AesEcbCipher<'c> {
     }
 }
 
-impl<'a> Cipher for AesEcbCipher<'a> {
-    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+impl<'a, T: AsRef<[u8]>> Cipher<T> for AesEcbCipher<'a> {
+    fn encrypt(&self, plaintext: T) -> Vec<u8> {
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
         let mut v = Vec::new();
 
-        for c in plaintext.chunks(self.block_size) {
+        for c in plaintext.as_ref().chunks(self.block_size) {
             let mut block = GenericArray::from_slice(c).clone();
             cipher.encrypt_block(&mut block);
             v.append(&mut block.to_vec());
@@ -123,11 +120,11 @@ impl<'a> Cipher for AesEcbCipher<'a> {
         v
     }
 
-    fn decrypt(&self, ciphertext: &[u8]) -> Vec<u8> {
+    fn decrypt(&self, ciphertext: T) -> Vec<u8> {
         let cipher = Aes128::new(GenericArray::from_slice(self.key));
         let mut v = Vec::new();
 
-        for c in ciphertext.chunks(self.block_size) {
+        for c in ciphertext.as_ref().chunks(self.block_size) {
             let mut block = GenericArray::from_slice(&c).clone();
             cipher.decrypt_block(&mut block);
             v.append(&mut block.to_vec());
