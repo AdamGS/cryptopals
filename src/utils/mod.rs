@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 use crate::bitarray::BitArray;
 
+pub mod base64;
+
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
     fn strip_pad(&self) -> Result<Vec<u8>, ()>;
@@ -152,7 +154,7 @@ pub fn frequency_map() -> HashMap<char, f64> {
 }
 
 pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
-    use crate::base64::base64tohex;
+    use crate::utils::base64::base64tohex;
     use std::fs;
 
     let s = fs::read_to_string(path).unwrap();
