@@ -257,7 +257,7 @@ mod tests {
 
         assert_eq!(guessed_block_size, 16);
 
-        //Now we detected it's AES-ECB (Using the method from the 11th challenge)
+        //Now we detect it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
         let ciphertext = unknown_string_padded_oracle(&known_str, cipher);
         let mut identical_block_count = 0;

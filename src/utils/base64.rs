@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::bitarray::BitArray;
 use crate::utils::{char_to_hex, hex_to_char};
+use itertools::Itertools;
 
 //TODO: Replace with macro
 const BASE64_TABLE: [char; 64] = [
@@ -13,6 +14,7 @@ const BASE64_TABLE: [char; 64] = [
 pub fn string2hex<T: AsRef<str>>(string: T) -> Vec<u8> {
     let mut byte_vec = Vec::new();
     let mut chars = string.as_ref().chars();
+
     while let (Some(l), Some(r)) = (chars.next(), chars.next()) {
         let left = char_to_hex(l) << 4;
         let right = char_to_hex(r);
@@ -65,34 +67,23 @@ pub fn hex2base64<T: AsRef<[u8]>>(bytearray: T) -> String {
 
 pub fn base64tohex<T: AsRef<str>>(string: T) -> Vec<u8> {
     use std::iter::FromIterator;
-    let mut v = Vec::new();
     let char_to_index_map: HashMap<&char, i32> = HashMap::from_iter(BASE64_TABLE.iter().zip(0..64));
-    let mut temp_vec = Vec::new();
 
-    for c in string.as_ref().chars() {
-        if c != '=' {
-            temp_vec.push(char_to_index_map[&c] as u8);
-        }
-    }
+    // Encode the base64 string into 6-bit values
+    let bitencoded_vec = string
+        .as_ref()
+        .chars()
+        .filter(|c| *c != '=')
+        .map(|c| char_to_index_map[&c] as u8)
+        .collect_vec();
 
-    let mut r: u8 = 0;
-    let mut has = 0;
-    let bits = BitArray::new(&temp_vec, 2);
+    let bits = BitArray::new(&bitencoded_vec, 2);
 
-    for (i, two_bits) in bits.enumerate() {
-        if i % 4 != 0 {
-            has += 1;
-            r = (r | two_bits) << if has % 4 == 0 { 0 } else { 2 };
-
-            if has == 4 {
-                v.push(r);
-                has = 0;
-                r = 0;
-            }
-        }
-    }
-
-    v
+    bits.enumerate()
+        .filter(|(idx, _)| idx % 4 != 0)
+        .tuples()
+        .map(|((_, a), (_, b), (_, c), (_, d))| a << 6 | b << 4 | c << 2 | d)
+        .collect_vec()
 }
 
 #[cfg(test)]
