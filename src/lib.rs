@@ -240,6 +240,7 @@ mod tests {
         let key = "ABCDEFGHIJKLMNOP".as_bytes();
         let block_size = 16;
         let mut guessed_block_size = 0;
+        let all_chars = all_ascii_chars();
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
@@ -296,20 +297,20 @@ mod tests {
             //This is a known prefix
             let base_ciphertext = unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
 
-            for c in all_ascii_chars() {
+            for c in &all_chars {
                 let mut input = vec![65u8; block_count - i];
 
                 // Push all the known characters
                 for byte in unknown_string.bytes() {
-                    input.push(byte as u8);
+                    input.push(byte);
                 }
 
                 // That's our current "guess", and we compute the ciphertext for it.
-                input.push(c as u8);
+                input.push(*c as u8);
                 let ciphertext = unknown_string_padded_oracle(&input, cipher);
 
                 //We put the precomputed ciphertext in here
-                hashmap.insert(ciphertext[0..block_count].to_vec(), c);
+                hashmap.insert(ciphertext[0..block_count].to_vec(), *c);
             }
 
             //From all of the ciphertexts we just computed, we take the guess that shares the same
@@ -480,5 +481,24 @@ mod tests {
         let parsed = parse_kv(&decrypted, b';');
 
         assert!(parsed.contains_key("admin".as_bytes()))
+    }
+
+    #[test]
+    fn challenge17() {
+        let lines: Vec<Vec<u8>> = std::fs::read_to_string("statics/ch17.txt")
+            .unwrap()
+            .lines()
+            .map(|s| base64tohex(s))
+            .collect();
+        let mut rng = rand::thread_rng();
+        let random_idx = rng.gen_range(0, 10);
+
+        let block_size = 16;
+
+        let random_line = lines[random_idx].clone().pad(block_size);
+
+        let random_key = get_rand_bytes(block_size);
+        let iv = get_rand_bytes(block_size);
+        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(random_key.as_slice(), block_size, iv.as_ref()));
     }
 }
