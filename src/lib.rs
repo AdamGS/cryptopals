@@ -101,33 +101,33 @@ mod tests {
         let ciphertext = read_base64file_to_hex("statics/set1ch6.txt");
         let mut vec = Vec::new();
 
-        // For every keysize in the a likely range
-        for keysize in 2..40 {
-            let mut chunks = ciphertext.chunks(keysize);
+        // For every key_size in the a likely range
+        for key_size in 2..40 {
+            let mut chunks = ciphertext.chunks(key_size);
             let mut num_of_pairs = 0;
             let mut dist = 0;
 
-            // We calculate the differense between the first keysize-sized block and the second
+            // We calculate the difference between the first key_sized block and the second
             while let (Some(f), Some(s)) = (chunks.next(), chunks.next()) {
                 dist += hamming_distance(f, s);
                 num_of_pairs += 1;
             }
 
-            // Average distance between two blocks, normalized by dividing by the keysize
-            let normalized_distance = (dist / num_of_pairs) / keysize;
+            // Average distance between two blocks, normalized by dividing by the key_size
+            let normalized_distance = (dist / num_of_pairs) / key_size;
 
-            vec.push((normalized_distance, keysize));
+            vec.push((normalized_distance, key_size));
         }
 
-        let actual_keysize = vec.iter().min_by(|a, b| a.0.cmp(&b.0)).unwrap().1;
+        let actual_key_size = vec.iter().min_by(|a, b| a.0.cmp(&b.0)).unwrap().1;
 
-        assert_eq!(actual_keysize, 29);
+        assert_eq!(actual_key_size, 29);
 
-        let mut strings = vec![Vec::new(); actual_keysize];
-        let mut key = vec![0u8; actual_keysize];
+        let mut strings = vec![Vec::new(); actual_key_size];
+        let mut key = vec![0u8; actual_key_size];
 
         for (i, c) in ciphertext.iter().enumerate() {
-            strings[i % actual_keysize].push(*c);
+            strings[i % actual_key_size].push(*c);
         }
 
         for (i, s) in strings.iter().enumerate() {
