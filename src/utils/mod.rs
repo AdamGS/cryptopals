@@ -5,6 +5,11 @@ use crate::bitarray::BitArray;
 
 pub mod base64;
 
+#[cfg(windows)]
+const LINE_ENDING: &str = "\r\n";
+#[cfg(not(windows))]
+const LINE_ENDING: &str = "\n";
+
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
     fn strip_pad(&self) -> Result<Vec<u8>, ()>;
@@ -159,7 +164,7 @@ pub fn read_base64file_to_hex(path: &str) -> Vec<u8> {
 
     let s = fs::read_to_string(path).unwrap();
 
-    let modified_string = s.replace("\n", "");
+    let modified_string = s.replace(LINE_ENDING, "");
 
     base64tohex(modified_string.as_str())
 }
