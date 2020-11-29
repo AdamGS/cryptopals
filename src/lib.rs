@@ -160,8 +160,8 @@ mod tests {
         let mut result_map: HashMap<usize, usize> = Default::default();
         let block_size = 16;
 
-        // Count how many block of block_size repeat within each line,
-        // The line with the most repeats is assumed to be encrypted in ecb mode.
+        // Count how many block of block_size repeat within each line.
+        // The line with the most repeated sequences is assumed to be encrypted in ECB mode.
         for (idx, line) in file_lines.enumerate() {
             for chunk in line.chunks(block_size) {
                 for internal in line.chunks(block_size) {
@@ -175,7 +175,7 @@ mod tests {
         let ecb_line = result_map.iter().max_by(|x, y| x.1.cmp(y.1)).unwrap();
 
         println!("The line is the AES-ECB encrypted data is: {}", ecb_line.0);
-        assert_eq!(*ecb_line.0, 132usize);
+        assert_eq!(*ecb_line.0, 132_usize);
     }
 
     #[test]
@@ -217,6 +217,7 @@ mod tests {
 
         let ciphertext = random_padded_encryption_oracle(text, cipher);
 
+        // This is the total number of blocks that appear more than once.
         let mut identical_block_count = 0;
 
         // Count identical blocks, becase ECB has those for the input we engineered
@@ -228,7 +229,7 @@ mod tests {
             }
         }
 
-        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+        // identical_block_count / number_of_blocks. Played around and 2 seemed like a good threshold.
         let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 2 {
             "ECB"
         } else {
