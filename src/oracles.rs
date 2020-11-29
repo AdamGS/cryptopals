@@ -50,8 +50,5 @@ pub fn cbc_keyval_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -
 }
 
 pub fn cbc_padding_oracle<T: AsRef<[u8]>>(text: T, cipher: AesBlockCipher) -> bool {
-    match cipher.decrypt(text).strip_pad() {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    cipher.decrypt(text).strip_pad().is_ok()
 }
