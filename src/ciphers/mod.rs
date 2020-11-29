@@ -7,13 +7,33 @@ pub trait Cipher<T: AsRef<[u8]>> {
     fn decrypt(&self, ciphertext: T) -> Vec<u8>;
 }
 
-struct XorCipher {
+pub struct XorCipher {
     key: u8,
 }
 
 impl XorCipher {
     pub fn new(key: u8) -> Self {
         XorCipher { key }
+    }
+}
+
+pub struct RepeatingXorCipher<'a> {
+    key: &'a [u8],
+}
+
+impl RepeatingXorCipher<'_> {
+    pub fn new(key: &'static [u8]) -> Self {
+        RepeatingXorCipher { key: key.as_ref() }
+    }
+}
+
+impl<T: AsRef<[u8]>> Cipher<T> for RepeatingXorCipher<'_> {
+    fn encrypt(&self, plaintext: T) -> Vec<u8> {
+        repeating_key_xor_cipher(plaintext, self.key)
+    }
+
+    fn decrypt(&self, ciphertext: T) -> Vec<u8> {
+        repeating_key_xor_cipher(ciphertext, self.key)
     }
 }
 
@@ -27,12 +47,12 @@ impl<T: AsRef<[u8]>> Cipher<T> for XorCipher {
     }
 }
 
-pub fn single_byte_xor_cipher<T: AsRef<[u8]>>(ciphertext: T, key: u8) -> Vec<u8> {
+fn single_byte_xor_cipher<T: AsRef<[u8]>>(ciphertext: T, key: u8) -> Vec<u8> {
     let key = vec![key; ciphertext.as_ref().len()];
     fixed_xor(key, ciphertext.as_ref().to_owned())
 }
 
-pub fn repeating_key_xor_cipher<T: AsRef<[u8]>, S: AsRef<[u8]>>(ciphertext: T, key: S) -> Vec<u8> {
+fn repeating_key_xor_cipher<T: AsRef<[u8]>, S: AsRef<[u8]>>(ciphertext: T, key: S) -> Vec<u8> {
     let mut r = Vec::new();
     for (i, v) in ciphertext.as_ref().iter().enumerate() {
         let temp = v ^ key.as_ref()[i % key.as_ref().len()];

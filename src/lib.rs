@@ -15,7 +15,7 @@ mod tests {
 
     use crate::ciphers::aes_ciphers::{AesBlockCipher, AesCbcCipher, AesEcbCipher};
     use crate::ciphers::breakers::break_single_xor_cipher;
-    use crate::ciphers::{repeating_key_xor_cipher, single_byte_xor_cipher, Cipher};
+    use crate::ciphers::{Cipher, RepeatingXorCipher, XorCipher};
     use crate::oracles::{
         cbc_keyval_oracle, prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
         unknown_string_padded_oracle,
@@ -38,10 +38,10 @@ mod tests {
     fn challenge2() {
         let a_string = "1c0111001f010100061a024b53535009181c";
         let b_string = "686974207468652062756c6c277320657965";
-        let output = "746865206b696420646f6e277420706c6179";
+        let expected_output = "746865206b696420646f6e277420706c6179";
         assert_eq!(
             fixed_xor(string2hex(a_string), string2hex(b_string)),
-            string2hex(output)
+            string2hex(expected_output)
         );
     }
 
@@ -50,7 +50,8 @@ mod tests {
         let ciphertext = string2hex("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736");
 
         let key = break_single_xor_cipher(&ciphertext);
-        let final_string = single_byte_xor_cipher(&ciphertext, key);
+        let xor_cipher = XorCipher::new(key);
+        let final_string = xor_cipher.encrypt(&ciphertext);
 
         assert_eq!(b"Cooking MC's like a pound of bacon".to_vec(), final_string);
     }
@@ -67,7 +68,8 @@ mod tests {
 
         for line in file_lines {
             for key in hex_keys.to_owned() {
-                let plaintext = single_byte_xor_cipher(string2hex(line), key);
+                let cipher = XorCipher::new(key);
+                let plaintext = cipher.encrypt(string2hex(line));
                 let plaintext_string = String::from_utf8(plaintext);
 
                 if let Ok(v) = plaintext_string {
@@ -85,7 +87,8 @@ mod tests {
     fn challenge5() {
         let key = "ICE";
         let plaintext = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
-        let ciphertext = hex2string(repeating_key_xor_cipher(plaintext, key));
+        let cipher = RepeatingXorCipher::new(key.as_bytes());
+        let ciphertext = hex2string(cipher.encrypt(plaintext));
 
         assert_eq!(
             ciphertext,
