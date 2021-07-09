@@ -22,10 +22,7 @@ pub fn random_padded_encryption_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: Aes
 }
 
 pub fn unknown_string_padded_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -> Vec<u8> {
-    let unknown_str = read_base64file_to_hex("statics/ch12.txt");
-    let padded = [plaintext.as_ref(), unknown_str.as_ref()].concat().pad(16);
-
-    cipher.encrypt(padded)
+    prefix_unknown_string_padded_oracle(Vec::new(), plaintext, cipher)
 }
 
 pub fn prefix_unknown_string_padded_oracle<T: AsRef<[u8]>, S: AsRef<[u8]>>(
@@ -33,6 +30,7 @@ pub fn prefix_unknown_string_padded_oracle<T: AsRef<[u8]>, S: AsRef<[u8]>>(
     plaintext: S,
     cipher: AesBlockCipher,
 ) -> Vec<u8> {
+    // Maybe move this part out
     let unknown_str = read_base64file_to_hex("statics/ch12.txt");
     let padded = [prefix.as_ref(), plaintext.as_ref(), unknown_str.as_ref()]
         .concat()

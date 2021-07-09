@@ -24,6 +24,7 @@ mod tests {
     use crate::utils::cookie::{escape_control_chars, parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
+    use itertools::Itertools;
 
     #[test]
     fn challenge1() {
@@ -260,9 +261,10 @@ mod tests {
             }
         }
 
-        assert_eq!(guessed_block_size, 16);
+        assert_eq!(guessed_block_size, block_size);
 
-        //Now we detect it's AES-ECB (Using the method from the 11th challenge)
+        //Now we detect it's AES-ECB (Using the method from the 11th challenge), I should extract it
+        // to a function.
         let known_str: Vec<u8> = vec![65u8; 200];
         let ciphertext = unknown_string_padded_oracle(&known_str, cipher);
         let mut identical_block_count = 0;
@@ -275,7 +277,7 @@ mod tests {
             }
         }
 
-        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some wired sense
+        // identical_block_count / ( ciphertext.len() / block_size) Because it makes some weird sense
         let detected_cipher = if identical_block_count / (ciphertext.len() / block_size) > 3 {
             "ECB"
         } else {
@@ -348,21 +350,23 @@ mod tests {
 
     #[test]
     fn challenge14() {
-        let key = "ABCDEFGHIJKLMNOP".as_bytes();
-        let mut rng = rand::thread_rng();
-        let prefix_length = rng.gen_range(0, 16);
-        let prefix = get_rand_bytes(prefix_length);
         let block_size = 16;
+        let vec_key = get_rand_bytes(block_size);
+        let key = vec_key.as_slice();
+        let mut rng = rand::thread_rng();
+        // This method only works for this range!
+        let prefix_length = rng.gen_range(0, block_size + 1);
+        let random_prefix = get_rand_bytes(prefix_length);
         let mut guessed_block_size = 0;
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = prefix_unknown_string_padded_oracle(&prefix, [65u8], cipher).len();
+        let baseline = prefix_unknown_string_padded_oracle(&random_prefix, [65u8], cipher).len();
 
         //Let's figure out the block size!
         for l in 2..40 {
             let dummy_plaintext = vec![65u8; l];
-            let ciphertext = prefix_unknown_string_padded_oracle(&prefix, dummy_plaintext, cipher);
+            let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, dummy_plaintext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -371,9 +375,9 @@ mod tests {
 
         assert_eq!(guessed_block_size, 16);
 
-        //Now we detected it's AES-ECB (Using the method from the 11th challenge)
+        //Now we detect it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
-        let ciphertext = prefix_unknown_string_padded_oracle(&prefix, known_str, cipher);
+        let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, known_str, cipher);
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -399,20 +403,24 @@ mod tests {
         let mut guessed_prefix_length: usize = 0;
         let mut prev_block: Vec<u8> = Default::default();
 
+        let max_padding_length = prefix_unknown_string_padded_oracle(&random_prefix, Vec::new(), cipher).len();
+
         // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
-        for i in 1..17 {
-            let cipher = prefix_unknown_string_padded_oracle(&prefix, vec![65u8; i], cipher);
+        for attacker_pad_len in 0..guessed_block_size + 1 {
+            let prefix_ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, vec![65u8; attacker_pad_len], cipher);
 
             // If we filled the block ("overpadded" it), it will look the same as the previous 16 bytes.
-            if cipher[0..16].to_vec() == prev_block {
-                guessed_prefix_length = guessed_block_size - i + 1;
+            if prefix_ciphertext[0..guessed_block_size].to_vec() == prev_block {
+                guessed_prefix_length = guessed_block_size - attacker_pad_len + 1;
                 break;
             }
 
-            prev_block = cipher[0..16].to_vec();
+            prev_block = prefix_ciphertext[0..guessed_block_size].to_vec();
         }
 
         assert_eq!(guessed_prefix_length, prefix_length);
+
+        println!("The prefix's length is {}", guessed_prefix_length);
 
         let mut unknown_string = String::new();
         //For testing purposes later, and also because it makes the top loop prettier.
@@ -425,7 +433,7 @@ mod tests {
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
             //This is a known prefix
             let base_ciphertext = prefix_unknown_string_padded_oracle(
-                &prefix,
+                &random_prefix,
                 vec![65u8; block_count - i - guessed_prefix_length],
                 cipher,
             );
@@ -440,7 +448,7 @@ mod tests {
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
-                let ciphertext = prefix_unknown_string_padded_oracle(&prefix, input, cipher);
+                let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, input, cipher);
 
                 //We put the precomputed ciphertext in here
                 hashmap.insert(ciphertext[0..block_count].to_vec(), c);
@@ -455,6 +463,7 @@ mod tests {
     }
 
     #[test]
+    /// Validate all my padding code actually works as expected
     fn challenge15() {
         let valid = b"ICE ICE BABY\x04\x04\x04\x04";
         assert!(valid.strip_pad().is_ok());
