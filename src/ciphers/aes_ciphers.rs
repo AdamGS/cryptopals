@@ -58,7 +58,7 @@ impl<'b, T: AsRef<[u8]>> Cipher<T> for AesCbcCipher<'b> {
                 let xored_value = if acc.is_empty() {
                     fixed_xor(curr_block, self.iv)
                 } else {
-                    fixed_xor(&curr_block, &acc[acc.len() - self.block_size..acc.len()])
+                    fixed_xor(curr_block, &acc[acc.len() - self.block_size..acc.len()])
                 };
 
                 let mut encrypted_block = ecb.encrypt(xored_value);
@@ -81,7 +81,7 @@ impl<'b, T: AsRef<[u8]>> Cipher<T> for AesCbcCipher<'b> {
                     fixed_xor(decrypted_block, self.iv)
                 } else {
                     let ciphertext_blocks: Vec<&[u8]> = ciphertext.as_ref().chunks(self.block_size).collect();
-                    fixed_xor(decrypted_block, ciphertext_blocks[index - 1].to_vec())
+                    fixed_xor(decrypted_block, ciphertext_blocks[index - 1])
                 };
 
                 acc.append(xored_value.as_mut());
@@ -124,7 +124,7 @@ impl<'a, T: AsRef<[u8]>> Cipher<T> for AesEcbCipher<'a> {
         let mut v = Vec::new();
 
         for c in ciphertext.as_ref().chunks(self.block_size) {
-            let mut block = GenericArray::from_slice(&c).clone();
+            let mut block = *GenericArray::from_slice(c);
             cipher.decrypt_block(&mut block);
             v.append(&mut block.to_vec());
         }

@@ -23,7 +23,7 @@ pub struct RepeatingXorCipher<'a> {
 
 impl RepeatingXorCipher<'_> {
     pub fn new(key: &'static [u8]) -> Self {
-        RepeatingXorCipher { key: key.as_ref() }
+        RepeatingXorCipher { key }
     }
 }
 
@@ -48,8 +48,9 @@ impl<T: AsRef<[u8]>> Cipher<T> for XorCipher {
 }
 
 fn single_byte_xor_cipher<T: AsRef<[u8]>>(ciphertext: T, key: u8) -> Vec<u8> {
-    let key = vec![key; ciphertext.as_ref().len()];
-    fixed_xor(key, ciphertext.as_ref().to_owned())
+    let ciphertext = ciphertext.as_ref();
+    let key = vec![key; ciphertext.len()];
+    fixed_xor(key, ciphertext)
 }
 
 fn repeating_key_xor_cipher<T: AsRef<[u8]>, S: AsRef<[u8]>>(ciphertext: T, key: S) -> Vec<u8> {

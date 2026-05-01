@@ -12,7 +12,7 @@ const LINE_ENDING: &str = "\n";
 
 pub trait ByteSlice {
     fn pad(&self, block_size: usize) -> Vec<u8>;
-    fn strip_pad(&self) -> Result<Vec<u8>, ()>;
+    fn strip_pad(&self) -> Option<Vec<u8>>;
 }
 
 impl ByteSlice for [u8] {
@@ -20,19 +20,22 @@ impl ByteSlice for [u8] {
         pkcs7_pad(self, block_size)
     }
 
-    fn strip_pad(&self) -> Result<Vec<u8>, ()> {
+    fn strip_pad(&self) -> Option<Vec<u8>> {
         let last_byte = *self.last().unwrap() as usize;
         if self[self.len() - last_byte..self.len()].to_vec() == vec![last_byte as u8; last_byte] {
-            Ok(self[0..self.len() - last_byte].to_vec())
+            Some(self[0..self.len() - last_byte].to_vec())
         } else {
-            Err(())
+            None
         }
     }
 }
 
-pub fn fixed_xor<T: AsRef<[u8]>, S: AsRef<[u8]>>(arg1: T, arg2: S) -> Vec<u8> {
-    assert_eq!(arg1.as_ref().len(), arg2.as_ref().len());
-    let zip = arg1.as_ref().iter().zip(arg2.as_ref().iter());
+pub fn fixed_xor<T: AsRef<[u8]>, S: AsRef<[u8]>>(lhs: T, rhs: S) -> Vec<u8> {
+    let lhs = lhs.as_ref();
+    let rhs = rhs.as_ref();
+    assert_eq!(lhs.len(), rhs.len());
+
+    let zip = lhs.as_ref().iter().zip(rhs.as_ref().iter());
 
     zip.map(|(a, b)| a ^ b).collect()
 }
@@ -195,9 +198,9 @@ pub mod cookie {
 
     pub fn parse_kv(values: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
         let mut hm = HashMap::new();
-        for sub in values.as_ref().split(|c| *c == separator) {
-            let tup: Vec<&[u8]> = sub.split(|c| *c == b'=').collect();
-            hm.insert(tup[0], tup[1]);
+        for sub in values.split(|c| *c == separator) {
+            let kv = sub.split(|c| *c == b'=').collect::<Vec<_>>();
+            hm.insert(kv[0], kv[1]);
         }
 
         hm

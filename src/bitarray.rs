@@ -22,12 +22,7 @@ impl<'a> Iterator for BitArray<'a> {
 
     fn next(&mut self) -> Option<u8> {
         let remaining_in_byte: usize = 8 - self.bidx;
-
-        let spare_bits = if remaining_in_byte > self.step {
-            remaining_in_byte - self.step
-        } else {
-            0
-        };
+        let spare_bits = remaining_in_byte.saturating_sub(self.step);
 
         let to_read = remaining_in_byte - spare_bits;
 
@@ -47,7 +42,7 @@ impl<'a> Iterator for BitArray<'a> {
 
             self.bidx = needed;
 
-            return Some((high_byte << needed | low_byte) as u8);
+            return Some(high_byte << needed | low_byte);
         }
 
         self.bidx += to_read;
@@ -57,6 +52,6 @@ impl<'a> Iterator for BitArray<'a> {
             self.index += 1;
         }
 
-        Some(high_byte as u8)
+        Some(high_byte)
     }
 }

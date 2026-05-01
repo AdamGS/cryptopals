@@ -1,9 +1,9 @@
 extern crate aes;
 
-mod bitarray;
-mod ciphers;
-mod oracles;
-mod utils;
+pub mod bitarray;
+pub mod ciphers;
+pub mod oracles;
+pub mod utils;
 
 #[cfg(test)]
 mod tests {
@@ -404,8 +404,6 @@ mod tests {
         let mut guessed_prefix_length: usize = 0;
         let mut prev_block: Vec<u8> = Default::default();
 
-        let max_padding_length = prefix_unknown_string_padded_oracle(&random_prefix, Vec::new(), cipher).len();
-
         // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
         for attacker_pad_len in 0..guessed_block_size + 1 {
             let prefix_ciphertext =
@@ -444,9 +442,7 @@ mod tests {
                 let mut input = vec![65u8; block_count - i - guessed_prefix_length];
 
                 // Push all the known characters
-                for byte in unknown_string.bytes() {
-                    input.push(byte as u8);
-                }
+                input.extend_from_slice(unknown_string.as_bytes());
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
@@ -468,14 +464,13 @@ mod tests {
     /// Validate all my padding code actually works as expected
     fn challenge15() {
         let valid = b"ICE ICE BABY\x04\x04\x04\x04";
-        assert!(valid.strip_pad().is_ok());
-        assert_eq!(valid.strip_pad().unwrap(), b"ICE ICE BABY");
+        assert!(valid.strip_pad().is_some_and(|v| v == b"ICE ICE BABY"));
 
         let invalid = b"ICE ICE BABY\x04\x04\x04";
-        assert!(invalid.strip_pad().is_err());
+        assert!(invalid.strip_pad().is_none());
 
         let another_invalid = b"ICE ICE BABY\x01\x02\x03\x04";
-        assert!(another_invalid.strip_pad().is_err());
+        assert!(another_invalid.strip_pad().is_none());
     }
 
     #[test]
