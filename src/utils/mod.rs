@@ -54,18 +54,23 @@ pub fn rate_string<T: AsRef<[u8]>>(input: T) -> i64 {
         .sum()
 }
 
-pub fn hamming_distance<T: AsRef<[u8]>>(arg1: T, arg2: T) -> usize {
-    let first_arg = arg1.as_ref();
-    let second_arg = arg2.as_ref();
-    match first_arg.len().cmp(&second_arg.len()) {
-        Ordering::Less => second_arg.len() - first_arg.len(),
-        Ordering::Greater => first_arg.len() - second_arg.len(),
-        Ordering::Equal => {
-            let first_bits = BitArray::new(first_arg, 1);
-            let second_bits = BitArray::new(second_arg, 1);
-
-            first_bits.zip(second_bits).map(|(a, b)| a ^ b).sum::<u8>() as usize
+pub fn hamming_distance<T: AsRef<[u8]>>(lhs: T, rhs: T) -> usize {
+    let lhs = lhs.as_ref();
+    let rhs = rhs.as_ref();
+    match lhs.len().cmp(&rhs.len()) {
+        Ordering::Less => {
+            hamming_distance(lhs, &rhs[..lhs.len()])
+                + rhs[lhs.len()..].iter().map(|b| b.count_ones() as usize).sum::<usize>()
         }
+        Ordering::Greater => {
+            hamming_distance(&lhs[..rhs.len()], rhs)
+                + lhs[rhs.len()..].iter().map(|b| b.count_ones() as usize).sum::<usize>()
+        }
+        Ordering::Equal => lhs
+            .iter()
+            .zip(rhs.iter())
+            .map(|(l, r)| (l ^ r).count_ones() as usize)
+            .sum::<usize>(),
     }
 }
 

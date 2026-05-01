@@ -23,28 +23,29 @@ pub fn random_padded_encryption_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: Aes
     cipher.encrypt(padded)
 }
 
-pub fn unknown_string_padded_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -> Vec<u8> {
-    prefix_unknown_string_padded_oracle(Vec::new(), plaintext, cipher)
+pub fn unknown_string_padded_oracle<T: AsRef<[u8]>>(
+    plaintext: T,
+    cipher: AesBlockCipher,
+    unknown_string: &[u8],
+) -> Vec<u8> {
+    prefix_unknown_string_padded_oracle(Vec::new(), plaintext, cipher, unknown_string)
 }
 
 pub fn prefix_unknown_string_padded_oracle<T: AsRef<[u8]>, S: AsRef<[u8]>>(
     prefix: T,
     plaintext: S,
     cipher: AesBlockCipher,
+    unknown_str: &[u8],
 ) -> Vec<u8> {
-    // Maybe move this part out
-    let unknown_str = read_base64file_to_hex("statics/ch12.txt");
-    let padded = [prefix.as_ref(), plaintext.as_ref(), unknown_str.as_ref()]
-        .concat()
-        .pad(16);
+    let padded = [prefix.as_ref(), plaintext.as_ref(), unknown_str].concat().pad(16);
 
     cipher.encrypt(padded)
 }
 
 pub fn cbc_keyval_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -> Vec<u8> {
     let prefix = b"comment1=cooking%20MCs;userdata=";
-    let sufix = b";comment2=%20like%20a%20pound%20of%20bacon";
-    let padded = [prefix, plaintext.as_ref(), sufix].concat().pad(16);
+    let suffix = b";comment2=%20like%20a%20pound%20of%20bacon";
+    let padded = [prefix, plaintext.as_ref(), suffix].concat().pad(16);
 
     cipher.encrypt(padded)
 }

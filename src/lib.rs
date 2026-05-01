@@ -248,14 +248,16 @@ mod tests {
         let mut guessed_block_size = 0;
         let all_chars = all_ascii_chars();
 
+        let unknown_str = read_base64file_to_hex("statics/ch12.txt");
+
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = unknown_string_padded_oracle([b'A'], cipher).len();
+        let baseline = unknown_string_padded_oracle([b'A'], cipher, &unknown_str).len();
 
         // Let's figure out the block size!
         for l in 2..40 {
             let dummy_plaintext = vec![b'A'; l];
-            let ciphertext = unknown_string_padded_oracle(&dummy_plaintext, cipher);
+            let ciphertext = unknown_string_padded_oracle(&dummy_plaintext, cipher, &unknown_str);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -267,7 +269,7 @@ mod tests {
         //Now we detect it's AES-ECB (Using the method from the 11th challenge), I should extract it
         // to a function.
         let known_str: Vec<u8> = vec![65u8; 200];
-        let ciphertext = unknown_string_padded_oracle(&known_str, cipher);
+        let ciphertext = unknown_string_padded_oracle(&known_str, cipher, &unknown_str);
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -302,7 +304,7 @@ mod tests {
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
             // This is a known prefix
-            let base_ciphertext = unknown_string_padded_oracle(vec![b'A'; block_count - i], cipher);
+            let base_ciphertext = unknown_string_padded_oracle(vec![b'A'; block_count - i], cipher, &unknown_str);
 
             for c in &all_chars {
                 let mut input = vec![65u8; block_count - i];
@@ -314,7 +316,7 @@ mod tests {
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(*c as u8);
-                let ciphertext = unknown_string_padded_oracle(&input, cipher);
+                let ciphertext = unknown_string_padded_oracle(&input, cipher, &unknown_str);
 
                 //We put the precomputed ciphertext in here
                 hashmap.insert(ciphertext[0..block_count].to_vec(), *c);
@@ -375,12 +377,15 @@ mod tests {
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = prefix_unknown_string_padded_oracle(&random_prefix, [65u8], cipher).len();
+        let unknown_baseline = read_base64file_to_hex("statics/ch12.txt");
+
+        let baseline = prefix_unknown_string_padded_oracle(&random_prefix, [65u8], cipher, &unknown_baseline).len();
 
         //Let's figure out the block size!
         for l in 2..40 {
             let dummy_plaintext = vec![65u8; l];
-            let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, dummy_plaintext, cipher);
+            let ciphertext =
+                prefix_unknown_string_padded_oracle(&random_prefix, dummy_plaintext, cipher, &unknown_baseline);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
                 break;
@@ -391,7 +396,7 @@ mod tests {
 
         //Now we detect it's AES-ECB (Using the method from the 11th challenge)
         let known_str: Vec<u8> = vec![65u8; 200];
-        let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, known_str, cipher);
+        let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, known_str, cipher, &unknown_baseline);
         let mut identical_block_count = 0;
 
         for a in ciphertext.chunks(16) {
@@ -419,8 +424,12 @@ mod tests {
 
         // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
         for attacker_pad_len in 0..guessed_block_size + 1 {
-            let prefix_ciphertext =
-                prefix_unknown_string_padded_oracle(&random_prefix, vec![65u8; attacker_pad_len], cipher);
+            let prefix_ciphertext = prefix_unknown_string_padded_oracle(
+                &random_prefix,
+                vec![65u8; attacker_pad_len],
+                cipher,
+                &unknown_baseline,
+            );
 
             // If we filled the block ("overpadded" it), it will look the same as the previous 16 bytes.
             if prefix_ciphertext[0..guessed_block_size].to_vec() == prev_block {
@@ -449,6 +458,7 @@ mod tests {
                 &random_prefix,
                 vec![65u8; block_count - i - guessed_prefix_length],
                 cipher,
+                &unknown_baseline,
             );
 
             for c in all_ascii_chars() {
@@ -459,7 +469,7 @@ mod tests {
 
                 // That's our current "guess", and we compute the ciphertext for it.
                 input.push(c as u8);
-                let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, input, cipher);
+                let ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, input, cipher, &unknown_baseline);
 
                 //We put the precomputed ciphertext in here
                 hashmap.insert(ciphertext[0..block_count].to_vec(), c);

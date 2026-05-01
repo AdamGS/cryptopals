@@ -22,8 +22,8 @@ pub struct RepeatingXorCipher<'a> {
     key: &'a [u8],
 }
 
-impl RepeatingXorCipher<'_> {
-    pub fn new(key: &'static [u8]) -> Self {
+impl<'a> RepeatingXorCipher<'a> {
+    pub fn new(key: &'a [u8]) -> Self {
         RepeatingXorCipher { key }
     }
 }
