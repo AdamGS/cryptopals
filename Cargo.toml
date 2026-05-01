@@ -2,10 +2,10 @@
 name = "cryptopals"
 version = "0.1.0"
 authors = ["Adam Gutglick <adamgsal@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 [dependencies]
-aes = "0.3.2"
-block-modes = "0.3.3"
+aes = "0.6"
+block-modes = "0.6"
 itertools = "0.9"
-rand = "0.7.3"
+rand = "0.9"

@@ -17,13 +17,13 @@ mod tests {
     use crate::ciphers::breakers::break_single_xor_cipher;
     use crate::ciphers::{Cipher, RepeatingXorCipher, XorCipher};
     use crate::oracles::{
-        cbc_keyval_oracle, prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
+        cbc_keyval_oracle, cbc_padding_oracle, prefix_unknown_string_padded_oracle, random_padded_encryption_oracle,
         unknown_string_padded_oracle,
     };
     use crate::utils::base64::{base64tohex, hex2base64, hex2string, string2hex};
     use crate::utils::cookie::{escape_control_chars, parse_kv, profile_for};
     use crate::utils::random::get_rand_bytes;
-    use crate::utils::{all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex, ByteSlice};
+    use crate::utils::{ByteSlice, all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex};
     use itertools::Itertools;
 
     #[test]
@@ -206,14 +206,15 @@ mod tests {
         let block_size = 16;
         let text = String::from_utf8(vec![65u8; 200]).unwrap();
 
-        let mut rng = rand::thread_rng();
-        let coinflip: i32 = rng.gen();
+        let mut rng = rand::rng();
+
         let key = get_rand_bytes(block_size);
         let iv = get_rand_bytes(block_size);
 
-        let cipher: AesBlockCipher = match coinflip % 2 == 0 {
-            true => AesBlockCipher::ECB(AesEcbCipher::new(key.as_slice(), block_size)),
-            false => AesBlockCipher::CBC(AesCbcCipher::new(key.as_slice(), block_size, iv.as_slice())),
+        let cipher: AesBlockCipher = if rng.random_bool(0.5) {
+            AesBlockCipher::ECB(AesEcbCipher::new(key.as_slice(), block_size))
+        } else {
+            AesBlockCipher::CBC(AesCbcCipher::new(key.as_slice(), block_size, iv.as_slice()))
         };
 
         let ciphertext = random_padded_encryption_oracle(text, cipher);
@@ -353,9 +354,9 @@ mod tests {
         let block_size = 16;
         let vec_key = get_rand_bytes(block_size);
         let key = vec_key.as_slice();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         // This method only works for this range!
-        let prefix_length = rng.gen_range(0, block_size + 1);
+        let prefix_length = rng.random_range(0..block_size + 1);
         let random_prefix = get_rand_bytes(prefix_length);
         let mut guessed_block_size = 0;
 
@@ -407,7 +408,8 @@ mod tests {
 
         // We send the oracle a known text, and i is actually equal (block_size - guessed_prefix_length + 1)
         for attacker_pad_len in 0..guessed_block_size + 1 {
-            let prefix_ciphertext = prefix_unknown_string_padded_oracle(&random_prefix, vec![65u8; attacker_pad_len], cipher);
+            let prefix_ciphertext =
+                prefix_unknown_string_padded_oracle(&random_prefix, vec![65u8; attacker_pad_len], cipher);
 
             // If we filled the block ("overpadded" it), it will look the same as the previous 16 bytes.
             if prefix_ciphertext[0..guessed_block_size].to_vec() == prev_block {
@@ -493,25 +495,29 @@ mod tests {
         let decrypted = cipher.decrypt(modified_ciphertext);
         let parsed = parse_kv(&decrypted, b';');
 
+        assert_eq!(parsed.get("admin".as_bytes()).unwrap(), &"true".as_bytes());
+
         assert!(parsed.contains_key("admin".as_bytes()))
     }
 
     #[test]
     fn challenge17() {
+        const BLOCK_SIZE: usize = 16;
         let lines: Vec<Vec<u8>> = std::fs::read_to_string("statics/ch17.txt")
             .unwrap()
             .lines()
-            .map(|s| base64tohex(s))
+            .map(base64tohex)
             .collect();
-        let mut rng = rand::thread_rng();
-        let random_idx = rng.gen_range(0, 10);
+        let mut rng = rand::rng();
+        let random_idx = rng.random_range(0..10);
 
-        let block_size = 16;
+        let random_line = lines[random_idx].clone().pad(BLOCK_SIZE);
 
-        let random_line = lines[random_idx].clone().pad(block_size);
+        let random_key = get_rand_bytes(BLOCK_SIZE);
+        let iv = get_rand_bytes(BLOCK_SIZE);
+        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(random_key.as_slice(), BLOCK_SIZE, iv.as_ref()));
 
-        let random_key = get_rand_bytes(block_size);
-        let iv = get_rand_bytes(block_size);
-        let cipher = AesBlockCipher::CBC(AesCbcCipher::new(random_key.as_slice(), block_size, iv.as_ref()));
+        let ciphertext = cipher.encrypt(random_line);
+        assert!(cbc_padding_oracle(ciphertext, cipher));
     }
 }

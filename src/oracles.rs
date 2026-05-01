@@ -1,15 +1,15 @@
 use rand::Rng;
 
-use crate::ciphers::aes_ciphers::AesBlockCipher;
 use crate::ciphers::Cipher;
+use crate::ciphers::aes_ciphers::AesBlockCipher;
+use crate::utils::ByteSlice;
 use crate::utils::random::get_rand_bytes;
 use crate::utils::read_base64file_to_hex;
-use crate::utils::ByteSlice;
 
 pub fn random_padded_encryption_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -> Vec<u8> {
-    let mut rng = rand::thread_rng();
-    let pre_pad = rng.gen_range(5, 11);
-    let post_pad = rng.gen_range(5, 11);
+    let mut rng = rand::rng();
+    let pre_pad = rng.random_range(5..11);
+    let post_pad = rng.random_range(5..11);
     let padded = [
         get_rand_bytes(pre_pad),
         plaintext.as_ref().to_vec(),

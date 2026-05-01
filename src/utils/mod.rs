@@ -53,8 +53,8 @@ pub fn hamming_distance<T: AsRef<[u8]>>(arg1: T, arg2: T) -> usize {
     let first_arg = arg1.as_ref();
     let second_arg = arg2.as_ref();
     match first_arg.len().cmp(&second_arg.len()) {
-        Ordering::Less => (second_arg.len() - first_arg.len()),
-        Ordering::Greater => (first_arg.len() - second_arg.len()),
+        Ordering::Less => second_arg.len() - first_arg.len(),
+        Ordering::Greater => first_arg.len() - second_arg.len(),
         Ordering::Equal => {
             let first_bits = BitArray::new(first_arg, 1);
             let second_bits = BitArray::new(second_arg, 1);
@@ -74,17 +74,14 @@ pub fn hex_to_char(i: u8) -> char {
 
 pub fn char_to_hex(c: char) -> u8 {
     match c {
-        '0'..='9' => (c as u8 - b'0'),
+        '0'..='9' => c as u8 - b'0',
         'a'..='f' => 10 + (c as u8 - b'a'),
         _ => panic!("char_to_hex only converts char values between '0' and 'f'"),
     }
 }
 
 pub fn all_ascii_chars() -> Vec<char> {
-    //TODO: Replace with macro
-    use std::iter::FromIterator;
-
-    Vec::from_iter((0_u8..128_u8).map(|x| (x as char)))
+    (0_u8..128_u8).map(|x| x as char).collect()
 }
 
 pub fn frequency_map() -> HashMap<char, f64> {
@@ -180,8 +177,8 @@ pub mod random {
     use rand::Rng;
 
     pub fn get_rand_bytes(length: usize) -> Vec<u8> {
-        let mut rng = rand::thread_rng();
-        (0..length).map(|_| rng.gen()).collect()
+        let mut rng = rand::rng();
+        (0..length).map(|_| rng.random()).collect()
     }
 }
 

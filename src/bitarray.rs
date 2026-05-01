@@ -6,7 +6,7 @@ pub struct BitArray<'a> {
 }
 
 impl<'a> BitArray<'a> {
-    pub fn new(bytes: &'a [u8], step: usize) -> BitArray {
+    pub fn new(bytes: &[u8], step: usize) -> BitArray<'_> {
         assert!(step <= 8);
         BitArray {
             bytes,
@@ -41,7 +41,7 @@ impl<'a> Iterator for BitArray<'a> {
             let needed = self.step - remaining_in_byte;
 
             let low_byte = match self.bytes.get(self.index) {
-                Some(v) => (v >> (8 - needed)),
+                Some(v) => v >> (8 - needed),
                 _ => 0,
             };
 

@@ -1,8 +1,7 @@
 use crate::ciphers::Cipher;
 use crate::utils::fixed_xor;
-use aes::block_cipher_trait::generic_array::GenericArray;
-use aes::block_cipher_trait::BlockCipher;
-use aes::Aes128;
+use aes::cipher::generic_array::GenericArray;
+use aes::{Aes128, BlockCipher, NewBlockCipher};
 
 #[derive(Debug, Clone, Copy)]
 pub enum AesBlockCipher<'a> {
