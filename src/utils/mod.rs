@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use crate::bitarray::BitArray;
 
 pub mod base64;
+pub mod cookie;
+pub mod random;
 
 #[cfg(windows)]
 const LINE_ENDING: &str = "\r\n";
@@ -153,8 +155,7 @@ pub fn frequency_map() -> HashMap<char, f64> {
         ('y', 1.133),
         ('z', 0.059),
     ]
-    .iter()
-    .cloned()
+    .into_iter()
     .collect()
 }
 
@@ -176,55 +177,8 @@ fn pkcs7_pad(byte_slice: &[u8], block_size: usize) -> Vec<u8> {
     [byte_slice.to_vec(), vec![pad_char; pad_length]].concat()
 }
 
-pub mod random {
-    use rand::Rng;
-
-    pub fn get_rand_bytes(length: usize) -> Vec<u8> {
-        let mut rng = rand::rng();
-        (0..length).map(|_| rng.random()).collect()
-    }
-}
-
-pub mod cookie {
-    use std::collections::HashMap;
-
-    pub fn escape_control_chars<T: AsRef<str>>(input: T) -> String {
-        input
-            .as_ref()
-            .replace('&', "%26")
-            .replace('=', "%3D")
-            .replace(';', "%3B")
-    }
-
-    pub fn parse_kv(values: &[u8], separator: u8) -> HashMap<&[u8], &[u8]> {
-        let mut hm = HashMap::new();
-        for sub in values.split(|c| *c == separator) {
-            let kv = sub.split(|c| *c == b'=').collect::<Vec<_>>();
-            hm.insert(kv[0], kv[1]);
-        }
-
-        hm
-    }
-
-    pub fn encode_kv(hm: HashMap<&str, &str>) -> String {
-        let email = escape_control_chars(*hm.get("email").unwrap());
-        let uid = escape_control_chars(*hm.get("uid").unwrap());
-        let role = escape_control_chars(*hm.get("role").unwrap());
-        format!("email={}&uid={}&role={}", email, uid, role)
-    }
-
-    pub fn profile_for(email: &str) -> String {
-        let mut hm = HashMap::new();
-        hm.insert("uid", "10");
-        hm.insert("role", "user");
-        hm.insert("email", email);
-        encode_kv(hm)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::utils::cookie::profile_for;
 
     use super::*;
 
@@ -241,10 +195,5 @@ mod tests {
             b"YELLOW SUBMARINE\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10",
             padded.as_slice()
         );
-    }
-
-    #[test]
-    fn test_cookie_parsing() {
-        assert_eq!(profile_for("foo@bar.com"), "email=foo@bar.com&uid=10&role=user");
     }
 }

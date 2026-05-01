@@ -21,10 +21,10 @@ mod tests {
         unknown_string_padded_oracle,
     };
     use crate::utils::base64::{base64tohex, hex2base64, hex2string, string2hex};
-    use crate::utils::cookie::{escape_control_chars, parse_kv, profile_for};
+    use crate::utils::cookie::{encode_kv, escape_control_chars, parse_kv};
+
     use crate::utils::random::get_rand_bytes;
     use crate::utils::{ByteSlice, all_ascii_chars, fixed_xor, hamming_distance, rate_string, read_base64file_to_hex};
-    use itertools::Itertools;
 
     #[test]
     fn challenge1() {
@@ -68,7 +68,7 @@ mod tests {
         let file_lines = s.lines();
 
         for line in file_lines {
-            for key in hex_keys.to_owned() {
+            for key in hex_keys.iter().copied() {
                 let cipher = XorCipher::new(key);
                 let plaintext = cipher.encrypt(string2hex(line));
                 let plaintext_string = String::from_utf8(plaintext);
@@ -156,7 +156,7 @@ mod tests {
         let mut file = File::open("statics/ch8.txt").unwrap();
         let mut s = String::new();
         file.read_to_string(&mut s).expect("Unable to read file");
-        let file_lines = s.lines().map(|l| base64tohex(l));
+        let file_lines = s.lines().map(base64tohex);
 
         let mut result_map: HashMap<usize, usize> = Default::default();
         let block_size = 16;
@@ -250,11 +250,11 @@ mod tests {
 
         let cipher = AesBlockCipher::ECB(AesEcbCipher::new(key, block_size));
 
-        let baseline = unknown_string_padded_oracle(&[65u8], cipher).len();
+        let baseline = unknown_string_padded_oracle([b'A'], cipher).len();
 
-        //Let's figure out the block size!
+        // Let's figure out the block size!
         for l in 2..40 {
-            let dummy_plaintext = vec![65u8; l];
+            let dummy_plaintext = vec![b'A'; l];
             let ciphertext = unknown_string_padded_oracle(&dummy_plaintext, cipher);
             if ciphertext.len() != baseline {
                 guessed_block_size = ciphertext.len() - baseline;
@@ -301,8 +301,8 @@ mod tests {
             let block_count = (1 + (i / 16)) * guessed_block_size;
 
             let mut hashmap: HashMap<Vec<u8>, char> = Default::default();
-            //This is a known prefix
-            let base_ciphertext = unknown_string_padded_oracle(&vec![65u8; block_count - i], cipher);
+            // This is a known prefix
+            let base_ciphertext = unknown_string_padded_oracle(vec![b'A'; block_count - i], cipher);
 
             for c in &all_chars {
                 let mut input = vec![65u8; block_count - i];
@@ -326,6 +326,19 @@ mod tests {
         }
 
         assert_eq!(final_result, unknown_string.into_bytes());
+    }
+
+    fn profile_for(email: &str) -> String {
+        let mut hm = HashMap::new();
+        hm.insert("uid", "10");
+        hm.insert("role", "user");
+        hm.insert("email", email);
+        encode_kv(hm)
+    }
+
+    #[test]
+    fn test_cookie_parsing() {
+        assert_eq!(profile_for("foo@bar.com"), "email=foo@bar.com&uid=10&role=user");
     }
 
     #[test]

@@ -7,6 +7,8 @@ use crate::utils::random::get_rand_bytes;
 use crate::utils::read_base64file_to_hex;
 
 pub fn random_padded_encryption_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: AesBlockCipher) -> Vec<u8> {
+    const BLOCK_SIZE: usize = 16;
+
     let mut rng = rand::rng();
     let pre_pad = rng.random_range(5..11);
     let post_pad = rng.random_range(5..11);
@@ -16,7 +18,7 @@ pub fn random_padded_encryption_oracle<T: AsRef<[u8]>>(plaintext: T, cipher: Aes
         get_rand_bytes(post_pad),
     ]
     .concat()
-    .pad(16);
+    .pad(BLOCK_SIZE);
 
     cipher.encrypt(padded)
 }
